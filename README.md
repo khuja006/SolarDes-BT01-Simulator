@@ -66,3 +66,32 @@ SolarDes-BT01-Simulator/
 ## 6. How to Contribute
 
 Bug reports on thermodynamic formulas, UI responsiveness, or accessibility are welcome via GitHub Issues. Please read [`CONTRIBUTING.md`](CONTRIBUTING.md) before opening a pull request—architectural or process-design changes require prior discussion.
+
+
+## 📬 Contact | Контакты | Aloqa
+
+**For questions, partnerships, or NDA requests:**
+
+- **Email:** baxriddinjorayev006@gmail.com
+- **GitHub Issues:** (https://github.com/khuja006/SolarDes-BT01-Simulator/issues) for technical questions
+- **LinkedIn:** (https://linkedin.com/in/your-profile)
+
+---
+
+**По вопросам, партнёрству или запросам NDA:**
+
+- **Email:** baxriddinjorayev006@gmail.com
+- **GitHub Issues:** https://github.com/khuja006/SolarDes-BT01-Simulator/issues для технических вопросов
+- **LinkedIn:** https://linkedin.com/in/your-profile
+
+---
+
+**Savollar, hamkorlik yoki NDA bo‘yicha murojaatlar uchun:**
+
+- **Email:** baxriddinjorayev006@gmail.com
+- **GitHub Issues:** Texnik savollar uchun https://github.com/khuja006/SolarDes-BT01-Simulator/issues
+- **LinkedIn:** https://linkedin.com/in/your-profile
+
+---
+
+> ⚠️ **Note:** For partnership, investment, or NDA discussions, please use email. Technical questions are welcome via GitHub Issues. Response time: 24–48 hours.
