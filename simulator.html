@@ -1,0 +1,2550 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SolarDes Test Stand — SCADA Training Simulator v1.0 (Apache 2.0 Public Release)</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+  <style>
+    @keyframes pulse-flow {
+      0% { stroke-dashoffset: 24; }
+      100% { stroke-dashoffset: 0; }
+    }
+    .flow-line {
+      stroke-dasharray: 6 3;
+      animation: pulse-flow 1.2s linear infinite;
+    }
+    .fan-spin {
+      transform-origin: center;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      100% { transform: rotate(360deg); }
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-cyan-500 selection:text-white">
+
+  <!-- TOP HEADER / SCADA STATUS BAR -->
+  <header class="bg-slate-900/90 border-b border-slate-800 sticky top-0 z-50 backdrop-blur-md px-4 py-2.5">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      
+      <!-- Brand & Honest Title -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-600 to-blue-500 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base font-bold tracking-tight text-white flex items-center gap-1.5">
+              Test Stand SCADA Training Simulator <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800">v1.0 OSS (Apache 2.0)</span>
+            </h1>
+            <span id="badge-system-state" class="text-xs px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 font-mono">TIZIM: NORMAL</span>
+          </div>
+          <p class="text-xs text-slate-400">Interactive Procedure Trainer & Antoine / Clausius-Clapeyron Termodinamik Modeli</p>
+        </div>
+      </div>
+
+      <!-- Session Metadata Tag -->
+      <div class="hidden xl:flex items-center bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-300 gap-3 font-mono">
+        <div class="flex items-center gap-1.5">
+          <span id="dot-session-live" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="text-slate-400">Simulyatsiya Vaqti:</span>
+          <span id="meta-sim-clock" class="text-cyan-400 font-bold">Kun 14 | 00:00:00</span>
+          <span class="text-slate-600">|</span>
+          <span id="meta-session-text">Demo Session | 2026-11-06 | T_amb: 24.2°C | RH: 42% | Op: Muhandis Jamoasi</span>
+        </div>
+      </div>
+
+      <!-- Controls: Audio, Simulation Speed, Run/Pause, E-Stop & Reset -->
+      <div class="flex items-center gap-2">
+        <!-- Sound Toggle -->
+        <button id="btn-sound-toggle" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition" title="Ovozni yoqish/o'chirish">
+          <svg id="icon-sound-on" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+          </svg>
+          <svg id="icon-sound-off" class="w-4 h-4 hidden text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z m11.414-4l4 4m0-4l-4 4"/>
+          </svg>
+        </button>
+
+        <!-- Speed Select (Fix #3.2: Honest Tooltip + 1800 sim sec = 1 day demo note) -->
+        <div class="flex items-center bg-slate-800 rounded-lg p-0.5 border border-slate-700 text-xs font-mono" title="Soat va kondensat to'planishini tezlashtiradi. 60x/300x rejimida 1800 sim-sekund = 1 kun (demo uchun tezlashtirilgan)">
+          <button id="btn-speed-1x" class="px-2 py-1 rounded bg-cyan-600 text-white font-bold transition">1x</button>
+          <button id="btn-speed-10x" class="px-2 py-1 rounded hover:bg-slate-700 text-slate-300 transition">10x</button>
+          <button id="btn-speed-60x" class="px-2 py-1 rounded hover:bg-slate-700 text-slate-300 transition">60x</button>
+          <button id="btn-speed-300x" class="px-2 py-1 rounded hover:bg-slate-700 text-slate-300 transition">300x</button>
+        </div>
+
+        <!-- Run/Pause -->
+        <button id="btn-run-toggle" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-lg shadow-emerald-600/20">
+          <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M4 4h4v12H4zM12 4h4v12h-4z"/></svg>
+          <span id="run-toggle-text">PAUZA</span>
+        </button>
+
+        <!-- Emergency Stop -->
+        <button id="btn-estop" class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-rose-700 hover:bg-rose-600 text-white text-xs font-black tracking-wider transition uppercase shadow-lg shadow-rose-700/30">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+          E-STOP
+        </button>
+
+        <!-- E-Stop Reset Button -->
+        <button id="btn-estop-reset" class="hidden flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold tracking-wider transition uppercase shadow-lg shadow-amber-600/30 animate-bounce">
+          🔄 TIKLASH (RESET)
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- MANDATORY ENGINEERING DISCLAIMER BANNER (Audit Verdict Condition #2 — Visible on Every Tab) -->
+  <div class="bg-amber-950/60 border-b border-amber-800/70 px-4 py-1.5 text-center">
+    <p class="max-w-7xl mx-auto text-[11px] text-amber-200 font-medium tracking-wide flex flex-wrap items-center justify-center gap-1.5">
+      <span class="font-bold text-amber-400 uppercase">⚠️ MUHANDISLIK IZOHI (DISCLAIMER):</span>
+      <span>«O‘quv vositasi. Fizik model va barcha SOP/scaling parametrlari illyustrativ (illustrative). Muhandislik qarorlari uchun ishlatilmaydi. Test Stand real o‘lchovlari bilan validatsiya qilinmagan.»</span>
+    </p>
+  </div>
+
+  <!-- SOP NAVIGATION TABS WITH DYNAMIC GATE INDICATORS (Fix #3.3) -->
+  <nav class="bg-slate-900 border-b border-slate-800 px-4 overflow-x-auto">
+    <div class="max-w-7xl mx-auto flex gap-1 py-1.5">
+      <button class="nav-tab active flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-white bg-slate-800 border border-slate-700 whitespace-nowrap" data-target="tab-scada">
+        <span>🎛️</span> SCADA & Fizik Model
+      </button>
+      <button class="nav-tab flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 whitespace-nowrap" data-target="tab-step1">
+        <span>🛠️</span> 1-Bosqich: Montaj
+        <span id="nav-badge-s1" class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">PASS</span>
+      </button>
+      <button class="nav-tab flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 whitespace-nowrap" data-target="tab-step2">
+        <span>⚖️</span> 2-Bosqich: Kalibrlash
+        <span id="nav-badge-s2" class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">PASS</span>
+      </button>
+      <button class="nav-tab flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 whitespace-nowrap" data-target="tab-step3">
+        <span>💨</span> 3-Bosqich: 24h Leak-Test
+        <span id="nav-badge-s3" class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">PASS</span>
+      </button>
+      <button class="nav-tab flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 whitespace-nowrap" data-target="tab-step4">
+        <span>🧪</span> 4-Bosqich: Baseline (h₀)
+        <span id="nav-badge-s4" class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">PASS</span>
+      </button>
+      <button class="nav-tab flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 whitespace-nowrap" data-target="tab-step5">
+        <span>🌊</span> 5-Bosqich: 30 Kunlik Sinov
+        <span id="nav-badge-s5" class="text-[10px] px-1.5 py-0.2 rounded bg-cyan-950 text-cyan-400 border border-cyan-800">ACTIVE</span>
+      </button>
+      <button class="nav-tab flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 whitespace-nowrap" data-target="tab-data">
+        <span>📊</span> 43,200 CSV & Audit
+      </button>
+    </div>
+  </nav>
+
+  <!-- MAIN VIEWPORT CONTAINER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 flex flex-col gap-4">
+
+    <!-- ========================================== -->
+    <!-- TAB 1: SCADA & FIZIK MODEL                 -->
+    <!-- ========================================== -->
+    <section id="tab-scada" class="tab-content flex flex-col gap-4">
+      
+      <!-- Top Quick KPI Metrics Cards (Fixes #1 & #2: T_surf = 65.5°C > T_sat = 65.0°C, h0 = 0.061, h_real = 0.059 kW/m²K) -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <!-- Vakuum Bosimi P1 & T_sat -->
+        <div id="card-kpi-p1" class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col justify-between transition">
+          <div class="flex items-center justify-between text-slate-400 text-xs font-medium">
+            <span>Kamera Bosimi (P1)</span>
+            <span class="text-cyan-400 font-mono text-[10px]">Antoine T_sat</span>
+          </div>
+          <div class="mt-2 flex items-baseline gap-1">
+            <span id="kpi-p1" class="text-2xl font-black text-cyan-400 font-mono">25.0</span>
+            <span class="text-xs text-slate-400">kPa</span>
+          </div>
+          <div class="mt-1 flex items-center justify-between text-[10px] text-slate-500">
+            <span>T_sat: <span id="kpi-tsat" class="font-mono text-slate-300">65.0°C</span></span>
+            <span>P2: <span id="kpi-p2" class="font-mono text-slate-300">25.3</span> kPa</span>
+          </div>
+        </div>
+
+        <!-- Evaporator Sirt Harorati (T_surf = 65.5°C > 65.0°C T_sat, Fix #2 Variant A) -->
+        <div id="card-kpi-tsurf" class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col justify-between transition">
+          <div class="flex items-center justify-between text-slate-400 text-xs font-medium">
+            <span>Absorber Sirti (T1-T3)</span>
+            <span id="badge-kpi-tsurf" class="text-amber-400 font-mono text-[10px]">+0.5K Overheat</span>
+          </div>
+          <div class="mt-2 flex items-baseline gap-1">
+            <span id="kpi-tsurf" class="text-2xl font-black text-amber-400 font-mono">65.5</span>
+            <span id="unit-tsurf" class="text-xs text-slate-400">°C</span>
+          </div>
+          <div class="mt-1 flex items-center justify-between text-[10px] text-slate-500">
+            <span>T_bulk (T4): <span id="kpi-tbulk" class="font-mono text-slate-300">45.2°C</span></span>
+            <span id="kpi-deltat" class="font-mono text-emerald-400 font-bold">Δ5.8%</span>
+          </div>
+        </div>
+
+        <!-- Kondensat Og'irligi (M1) (0.92 kg/h = 0.000256 kg/s) -->
+        <div id="card-kpi-m1" class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col justify-between transition">
+          <div class="flex items-center justify-between text-slate-400 text-xs font-medium">
+            <span>Kondensat (M1)</span>
+            <span class="text-blue-400 font-mono text-[10px]">0.5 m² Sirt</span>
+          </div>
+          <div class="mt-2 flex items-baseline gap-1">
+            <span id="kpi-m1" class="text-2xl font-black text-blue-400 font-mono">1.420</span>
+            <span class="text-xs text-slate-400">kg</span>
+          </div>
+          <div class="mt-1 flex items-center justify-between text-[10px] text-slate-500">
+            <span>J: <span id="kpi-evaprate" class="font-mono text-slate-300">1.84</span> kg/m²h</span>
+            <span>ṁ: <span id="kpi-massrate" class="font-mono text-cyan-400">0.92</span> kg/h</span>
+          </div>
+        </div>
+
+        <!-- Bug'lanish Koeffitsiyenti (Fix #1 Variant B: h0 = 0.061, h_real = 0.059 kW/m²·K, zero fudge factor + 5-pt MA & noise tooltip) -->
+        <div id="card-kpi-hreal" class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col justify-between transition cursor-help" title="±0.001 kW/m²·K mikro-tebranish — datchik shovqini (fizik normal, 5-nuqtali harakatlanuvchi o'rtacha filtrlangan)">
+          <div class="flex items-center justify-between text-slate-400 text-xs font-medium">
+            <span>Koeffitsiyent (h_eff)</span>
+            <span id="badge-kpi-hreal" class="text-indigo-400 font-mono text-[10px]">q_evap / ΔT</span>
+          </div>
+          <div class="mt-2 flex items-baseline gap-1">
+            <span id="kpi-hreal" class="text-2xl font-black text-indigo-400 font-mono">0.059</span>
+            <span id="unit-hreal" class="text-xs text-slate-400">kW/m²K</span>
+          </div>
+          <div class="mt-1 flex items-center justify-between text-[10px] text-slate-500">
+            <span>h₀: <span id="kpi-h0" class="font-mono text-slate-300">0.061</span></span>
+            <span id="kpi-scaling-loss" class="font-mono text-emerald-400 font-bold">-3.3%</span>
+          </div>
+        </div>
+
+        <!-- Suv Sifati (TDS & pH) -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col justify-between">
+          <div class="flex items-center justify-between text-slate-400 text-xs font-medium">
+            <span>Kondensat TDS</span>
+            <span class="text-emerald-400 font-mono text-[10px]">Norma &lt;50</span>
+          </div>
+          <div class="mt-2 flex items-baseline gap-1">
+            <span id="kpi-tds" class="text-2xl font-black text-emerald-400 font-mono">14.8</span>
+            <span class="text-xs text-slate-400">mg/L</span>
+          </div>
+          <div class="mt-1 flex items-center justify-between text-[10px] text-slate-500">
+            <span>pH: <span id="kpi-ph" class="font-mono text-slate-300">7.18</span></span>
+            <span>NH₃: <span id="kpi-nh3" class="font-mono text-slate-300">0.24</span> mg/L</span>
+          </div>
+        </div>
+
+        <!-- Lamp Quvvati & Reference Cell (Q1) -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col justify-between">
+          <div class="flex items-center justify-between text-slate-400 text-xs font-medium">
+            <span>Optik / Elektr (E1/Q1)</span>
+            <span class="text-yellow-400 font-mono text-[10px]">IR Lampa</span>
+          </div>
+          <div class="mt-2 flex items-baseline gap-1">
+            <span id="kpi-e1" class="text-2xl font-black text-yellow-400 font-mono">205</span>
+            <span class="text-xs text-slate-400">W</span>
+          </div>
+          <div class="mt-1 flex items-center justify-between text-[10px] text-slate-500">
+            <span>Q1 oqim:</span>
+            <span id="kpi-q1" class="font-mono text-slate-300">985 W/m²</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Real-Time Thermodynamic Equations Live Calculation Banner (Fixes #1 & #2: Exact q_evap / ΔT without fudge factor, P_sat > P_chamber) -->
+      <div class="bg-slate-900/90 border border-cyan-900/50 rounded-xl px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+        <div class="flex items-center gap-2">
+          <span class="px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800 font-bold">FIZIK MODEL (LIVE)</span>
+          <span class="text-slate-400">P_sat(65.5°C): <strong id="eq-psat" class="text-emerald-400">25.6 kPa (&gt;25.0 kPa ✓)</strong></span>
+          <span class="text-slate-600">|</span>
+          <span class="text-slate-400">λ(65.5°C): <strong id="eq-lambda" class="text-white">2346.2 kJ/kg</strong></span>
+          <span class="text-slate-600">|</span>
+          <span class="text-slate-400">ΔT (T_surf - T_bulk): <strong id="eq-dt" class="text-amber-400">20.3 K</strong></span>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="text-slate-400">q_evap = J × λ = <strong id="eq-qevap" class="text-cyan-400">1199 W/m²</strong></span>
+          <span class="text-slate-600">|</span>
+          <span class="text-slate-400">h_eff = q_evap / ΔT = <strong id="eq-heff" class="text-indigo-400">0.059 kW/m²·K (59 W/m²·K)</strong></span>
+        </div>
+      </div>
+
+      <!-- Main Visual Stend Diagram & SCADA Controls -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        
+        <!-- P&ID Interactive SVG Rig (2 Columns) -->
+        <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col relative overflow-hidden">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
+              <h2 class="text-sm font-bold text-white tracking-wide">P&ID Laboratoriya Stendi Arxitekturasi (P1 = 25.0 kPa, T_sat = 65.0°C, T_surf = 65.5°C)</h2>
+            </div>
+            <div class="flex items-center gap-2 text-xs">
+              <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">60L Akril Vakuum Kamera</span>
+              <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">0.5 m² SS316L + Uglerod</span>
+            </div>
+          </div>
+
+          <!-- Dynamic SVG Rig Diagram -->
+          <div class="w-full flex-1 min-h-[360px] bg-slate-950/70 border border-slate-800/80 rounded-xl relative p-2 flex items-center justify-center">
+            <svg viewBox="0 0 850 480" class="w-full h-full select-none" id="rig-svg">
+              <defs>
+                <linearGradient id="chamber-glass" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.12"/>
+                  <stop offset="100%" stop-color="#0284c7" stop-opacity="0.04"/>
+                </linearGradient>
+                <linearGradient id="ir-beam" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.55"/>
+                  <stop offset="100%" stop-color="#ef4444" stop-opacity="0.05"/>
+                </linearGradient>
+                <linearGradient id="carbon-layer" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stop-color="#1e293b"/>
+                  <stop offset="50%" stop-color="#0f172a"/>
+                  <stop offset="100%" stop-color="#1e293b"/>
+                </linearGradient>
+              </defs>
+
+              <!-- Bench / Heavy Support Table -->
+              <rect x="60" y="420" width="730" height="18" rx="4" fill="#334155" stroke="#475569" stroke-width="2"/>
+              <rect x="120" y="438" width="24" height="35" fill="#1e293b"/>
+              <rect x="710" y="438" width="24" height="35" fill="#1e293b"/>
+
+              <!-- NEAR-IR LAMP ASSEMBLY (Top) -->
+              <g id="svg-ir-lamp-group" transform="translate(180, 20)">
+                <line x1="160" y1="0" x2="160" y2="35" stroke="#64748b" stroke-width="4"/>
+                <path d="M 60 35 C 100 15, 220 15, 260 35 L 280 65 L 40 65 Z" fill="#475569" stroke="#94a3b8" stroke-width="2"/>
+                <circle cx="160" cy="50" r="14" fill="#fbbf24" id="svg-ir-filament" class="animate-pulse shadow-lg"/>
+                <text x="160" y="42" text-anchor="middle" font-size="9" font-weight="bold" fill="#0f172a">150-250W IR</text>
+                
+                <!-- Borosilicate Glass Cover -->
+                <rect x="35" y="65" width="250" height="6" rx="2" fill="#93c5fd" opacity="0.8" stroke="#38bdf8"/>
+                <text x="290" y="70" font-size="9" fill="#94a3b8">Borosilikat qopqoq</text>
+
+                <!-- Collimated Light Cone -->
+                <polygon points="40,71 280,71 310,210 10,210" fill="url(#ir-beam)" id="svg-light-beam"/>
+              </g>
+
+              <!-- REFERENCE CELL (Q1) Pyranometer -->
+              <g id="svg-ref-cell" transform="translate(480, 50)">
+                <rect x="0" y="0" width="45" height="25" rx="3" fill="#0284c7" stroke="#38bdf8" stroke-width="1.5"/>
+                <circle cx="22" cy="12" r="7" fill="#f8fafc"/>
+                <circle cx="22" cy="12" r="3" fill="#0284c7"/>
+                <text x="52" y="16" font-size="10" font-weight="bold" fill="#38bdf8">Q1 (Ref Cell)</text>
+                <text x="52" y="28" font-size="8" fill="#94a3b8">985 W/m² (No-shadow)</text>
+              </g>
+
+              <!-- VACUUM CHAMBER (60 Liter Acrylic / Borosilicate) -->
+              <rect x="150" y="110" width="380" height="290" rx="12" fill="url(#chamber-glass)" stroke="#38bdf8" stroke-width="2.5"/>
+              <text x="165" y="132" font-size="11" font-weight="bold" fill="#38bdf8">60L Vakuum Kamera (P1 = <tspan id="svg-p1-text">25.0 kPa</tspan>, T_sat = 65.0°C)</text>
+              
+              <!-- Chamber Flanges -->
+              <rect x="142" y="105" width="16" height="40" rx="2" fill="#64748b" stroke="#94a3b8"/>
+              <rect x="522" y="105" width="16" height="40" rx="2" fill="#64748b" stroke="#94a3b8"/>
+
+              <!-- INTERFACIAL EVAPORATOR (0.5 m² SS316L + 3.0mm Carbon Biomass) -->
+              <rect x="170" y="270" width="340" height="110" rx="4" fill="#0369a1" opacity="0.45"/>
+              <path d="M 170 270 Q 255 266 340 270 T 510 270 L 510 380 L 170 380 Z" fill="#0284c7" opacity="0.3"/>
+              <text x="275" y="330" font-size="10" font-weight="bold" fill="#7dd3fc">Dengiz suvi Bulk (T4 = <tspan id="svg-t4-text">45.2°C</tspan>)</text>
+              
+              <!-- 0.5 m² SS316L Substrate -->
+              <rect x="170" y="258" width="340" height="12" rx="2" fill="#94a3b8" stroke="#cbd5e1" stroke-width="1.5"/>
+              <text x="180" y="267" font-size="9" font-weight="bold" fill="#0f172a">0.5 m² SS316L Taglik</text>
+
+              <!-- 3.0 mm Porous Carbon Biomass Layer -->
+              <rect x="170" y="244" width="340" height="14" rx="2" fill="url(#carbon-layer)" stroke="#0f172a" stroke-width="1.5" id="svg-biomass-layer"/>
+              <text x="195" y="254" font-size="9" font-weight="bold" fill="#f8fafc">3.0 mm Uglerodli Biomassa (T_surf = <tspan id="svg-tsurf-text">65.5°C</tspan>)</text>
+
+              <!-- 9-Point Thermocouple Grid Indicator on Surface -->
+              <g id="svg-tc-grid" transform="translate(180, 246)">
+                <circle cx="20" cy="5" r="3" fill="#ef4444"/>
+                <circle cx="160" cy="5" r="3" fill="#ef4444"/>
+                <circle cx="300" cy="5" r="3" fill="#ef4444"/>
+                <text x="325" y="8" font-size="8" fill="#fca5a5">T1..T3 Sirt</text>
+              </g>
+
+              <!-- Steam / Vapor Flow out of Chamber Top-Right -->
+              <path d="M 460 110 L 460 70 L 600 70" fill="none" stroke="#38bdf8" stroke-width="4" class="flow-line" id="svg-vapor-line"/>
+              <text x="480" y="62" font-size="9" fill="#7dd3fc">Bug' (T5 = 65.1°C)</text>
+
+              <!-- DRY COOLER (Condenser Radiator + Fan) -->
+              <g id="svg-dry-cooler" transform="translate(600, 45)">
+                <rect x="0" y="0" width="90" height="130" rx="6" fill="#1e293b" stroke="#475569" stroke-width="2"/>
+                <path d="M 10 15 L 80 15 L 80 35 L 10 35 L 10 55 L 80 55 L 80 75 L 10 75 L 10 95 L 80 95 L 80 115 L 10 115" fill="none" stroke="#38bdf8" stroke-width="3"/>
+                <g transform="translate(45, 65)">
+                  <circle cx="0" cy="0" r="28" fill="none" stroke="#64748b" stroke-dasharray="4 2"/>
+                  <g class="fan-spin" id="svg-fan-blades">
+                    <line x1="-22" y1="0" x2="22" y2="0" stroke="#0284c7" stroke-width="5" stroke-linecap="round"/>
+                    <line x1="0" y1="-22" x2="0" y2="22" stroke="#0284c7" stroke-width="5" stroke-linecap="round"/>
+                  </g>
+                  <circle cx="0" cy="0" r="6" fill="#f8fafc"/>
+                </g>
+                <text x="45" y="142" text-anchor="middle" font-size="9" font-weight="bold" fill="#94a3b8">Dry Cooler (T6=58.4°C)</text>
+              </g>
+
+              <!-- Condensed Water Line towards GAC and Collection Scale -->
+              <path d="M 645 175 L 645 230" fill="none" stroke="#38bdf8" stroke-width="3" class="flow-line"/>
+
+              <!-- PRE-GAC Sampling Valve (V1) -->
+              <g transform="translate(635, 205)">
+                <polygon points="0,0 20,10 0,20" fill="#f59e0b"/>
+                <polygon points="20,0 0,10 20,20" fill="#f59e0b"/>
+                <text x="24" y="14" font-size="8" font-weight="bold" fill="#f59e0b">V1 (Pre-GAC)</text>
+              </g>
+
+              <!-- GAC Filter Cartridge -->
+              <g id="svg-gac-filter" transform="translate(620, 240)">
+                <rect x="0" y="0" width="50" height="55" rx="4" fill="#0f172a" stroke="#64748b" stroke-width="2"/>
+                <pattern id="gac-dots" x="0" y="0" width="6" height="6" patternUnits="userSpaceOnUse">
+                  <circle cx="3" cy="3" r="1.5" fill="#475569"/>
+                </pattern>
+                <rect x="2" y="2" width="46" height="51" fill="url(#gac-dots)"/>
+                <text x="25" y="30" text-anchor="middle" font-size="8" font-weight="bold" fill="#f8fafc">GAC</text>
+                <text x="25" y="42" text-anchor="middle" font-size="7" fill="#94a3b8">Kartrij</text>
+              </g>
+
+              <!-- POST-GAC Sampling Valve (V2) -->
+              <path d="M 645 295 L 645 325" fill="none" stroke="#38bdf8" stroke-width="3" class="flow-line"/>
+              <g transform="translate(635, 305)">
+                <polygon points="0,0 20,10 0,20" fill="#10b981"/>
+                <polygon points="20,0 0,10 20,20" fill="#10b981"/>
+                <text x="24" y="14" font-size="8" font-weight="bold" fill="#10b981">V2 (Post-GAC)</text>
+              </g>
+
+              <!-- CONDENSATE COLLECTION & SCALE M1 -->
+              <g id="svg-scale-m1" transform="translate(610, 340)">
+                <rect x="0" y="55" width="75" height="15" rx="2" fill="#334155" stroke="#64748b"/>
+                <text x="37" y="66" text-anchor="middle" font-size="8" font-weight="bold" fill="#38bdf8">M1 (0.92 kg/h)</text>
+                <rect x="12" y="10" width="50" height="45" rx="3" fill="#0284c7" opacity="0.3" stroke="#38bdf8" stroke-width="1.5"/>
+                <rect x="14" y="25" width="46" height="30" fill="#38bdf8" opacity="0.6"/>
+                <line x1="37" y1="5" x2="37" y2="40" stroke="#a855f7" stroke-width="2"/>
+                <text x="75" y="32" font-size="8" fill="#c084fc">TDS/pH datchik</text>
+              </g>
+
+              <!-- FEEDWATER, BACK-FLUSH & HYPOCHLORITE DOSING PUMPS -->
+              <g id="svg-pumps-group" transform="translate(20, 280)">
+                <path d="M 40 40 L 150 40" fill="none" stroke="#0284c7" stroke-width="3" class="flow-line"/>
+                <circle cx="70" cy="40" r="14" fill="#0f172a" stroke="#0284c7" stroke-width="2"/>
+                <text x="70" y="43" text-anchor="middle" font-size="8" font-weight="bold" fill="#38bdf8">P-Sea</text>
+                <text x="20" y="20" font-size="9" fill="#0284c7">Dengiz suvi (35g/L)</text>
+
+                <path d="M 40 85 L 150 85" fill="none" stroke="#10b981" stroke-width="3" stroke-dasharray="4 2"/>
+                <circle cx="70" cy="85" r="14" fill="#0f172a" stroke="#10b981" stroke-width="2"/>
+                <text x="70" y="88" text-anchor="middle" font-size="7" font-weight="bold" fill="#34d399">Flush</text>
+                <text x="20" y="112" font-size="8" fill="#34d399">Back-flush (5 min/6h)</text>
+
+                <circle cx="115" cy="85" r="10" fill="#0f172a" stroke="#f59e0b" stroke-width="1.5"/>
+                <text x="115" y="88" text-anchor="middle" font-size="6" font-weight="bold" fill="#f59e0b">NaOCl</text>
+              </g>
+
+              <!-- VACUUM PUMP -->
+              <g id="svg-vac-pump" transform="translate(300, 420)">
+                <rect x="0" y="0" width="55" height="25" rx="3" fill="#1e293b" stroke="#38bdf8"/>
+                <text x="27" y="16" text-anchor="middle" font-size="8" font-weight="bold" fill="#38bdf8">Vakuum Nasos</text>
+                <path d="M 27 0 L 27 -20" stroke="#38bdf8" stroke-width="2"/>
+              </g>
+
+            </svg>
+          </div>
+
+          <!-- P&ID Quick Actions Bar -->
+          <div class="mt-3 flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800 text-xs">
+            <div class="flex items-center gap-2">
+              <span class="text-slate-400">Tezkor Manipulyatsiya:</span>
+              <button id="btn-trigger-flush" class="px-2.5 py-1 rounded bg-emerald-950 hover:bg-emerald-900 text-emerald-400 border border-emerald-800 font-medium transition">
+                ⚡ Back-Flush Sikli (5 min)
+              </button>
+              <button id="btn-trigger-naocl" class="px-2.5 py-1 rounded bg-amber-950 hover:bg-amber-900 text-amber-400 border border-amber-800 font-medium transition">
+                🧪 0.4 ppm Gipoxlorit Dori
+              </button>
+              <button id="btn-clean-refcell" class="px-2.5 py-1 rounded bg-blue-950 hover:bg-blue-900 text-blue-400 border border-blue-800 font-medium transition">
+                🧽 Q1 Tozalash (Chang/Tuz)
+              </button>
+            </div>
+            <div class="text-slate-400 font-mono text-[11px]">
+              Kollimator balandligi: <span id="label-lamp-height" class="text-white font-bold">145 mm</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Side: Live Telemetry & Control Panel (1 Column) -->
+        <div class="flex flex-col gap-3">
+          
+          <!-- Live 16-Point Telemetry Matrix (T_surf = 65.5°C > T_sat = 65.0°C) -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-cyan-400"></span> 16-Nuqtali Datchiklar Matritsasi
+              </h3>
+              <span id="telemetry-health-badge" class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 font-mono">VALID</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+              <div class="bg-slate-950 p-2 rounded-lg border border-slate-800">
+                <span class="text-slate-500 text-[10px]">T1 (Sirt Markaz)</span>
+                <div class="text-amber-400 font-bold text-sm" id="val-t1">66.1 °C</div>
+              </div>
+              <div class="bg-slate-950 p-2 rounded-lg border border-slate-800">
+                <span class="text-slate-500 text-[10px]">T2 (Sirt Chekka)</span>
+                <div class="text-amber-400 font-bold text-sm" id="val-t2">64.8 °C</div>
+              </div>
+              <div class="bg-slate-950 p-2 rounded-lg border border-slate-800">
+                <span class="text-slate-500 text-[10px]">T3 (Biomassa O'rta)</span>
+                <div class="text-amber-400 font-bold text-sm" id="val-t3">65.6 °C</div>
+              </div>
+              <div class="bg-slate-950 p-2 rounded-lg border border-slate-800">
+                <span class="text-slate-500 text-[10px]">T4 (Dengiz Suvi Bulk)</span>
+                <div class="text-cyan-400 font-bold text-sm" id="val-t4">45.2 °C</div>
+              </div>
+              <div class="bg-slate-950 p-2 rounded-lg border border-slate-800">
+                <span class="text-slate-500 text-[10px]">T5 (Bug' Fazasi)</span>
+                <div class="text-cyan-400 font-bold text-sm" id="val-t5">65.1 °C</div>
+              </div>
+              <div class="bg-slate-950 p-2 rounded-lg border border-slate-800">
+                <span class="text-slate-500 text-[10px]">T6 (Kondensator Kirish)</span>
+                <div class="text-blue-400 font-bold text-sm" id="val-t6">58.4 °C</div>
+              </div>
+              <div class="bg-slate-950 p-2 rounded-lg border border-slate-800">
+                <span class="text-slate-500 text-[10px]">T7 (Kondensat Chiqish)</span>
+                <div class="text-blue-400 font-bold text-sm" id="val-t7">26.4 °C</div>
+              </div>
+              <div class="bg-slate-950 p-2 rounded-lg border border-slate-800">
+                <span class="text-slate-500 text-[10px]">E1 (IR Vattmetr)</span>
+                <div class="text-yellow-400 font-bold text-sm" id="val-e1">205 W</div>
+              </div>
+              <div class="bg-slate-950 p-2 rounded-lg border border-slate-800">
+                <span class="text-slate-500 text-[10px]">M2 (Analitik Kupon)</span>
+                <div class="text-slate-300 font-bold text-sm" id="val-m2">12.450 g</div>
+              </div>
+              <div class="bg-slate-950 p-2 rounded-lg border border-slate-800">
+                <span class="text-slate-500 text-[10px]">NH₃ (Salitsilat Metod)</span>
+                <div class="text-purple-400 font-bold text-sm" id="val-nh3">0.24 mg/L</div>
+              </div>
+            </div>
+
+            <!-- Fault Simulator Button -->
+            <div class="mt-3 pt-2 border-t border-slate-800 flex items-center justify-between">
+              <span class="text-[11px] text-slate-400">Nosozlik Injektsiyasi (Kaskadli):</span>
+              <button id="btn-inject-fault" class="text-[11px] px-2.5 py-1 rounded bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800 font-bold transition">
+                ⚠️ T1 Datchik Uzilishi (-999)
+              </button>
+            </div>
+          </div>
+
+          <!-- Operator Live Activity Log -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex-1 flex flex-col">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Operator Qaydlar Jurnali</h3>
+              <button id="btn-clear-log" class="text-[10px] text-slate-500 hover:text-slate-300">Tozalash</button>
+            </div>
+            <div id="operator-log-box" class="flex-1 min-h-[140px] max-h-[180px] overflow-y-auto bg-slate-950 p-2 rounded-lg border border-slate-800 font-mono text-[11px] space-y-1">
+              <div class="text-slate-400"><span class="text-cyan-500">[00:00:00]</span> Test Stand SCADA Training Simulator v1.0 (Public OSS) ishga tushirildi.</div>
+              <div class="text-emerald-400"><span class="text-slate-500">[00:00:02]</span> Termodinamik muvozanat: P1=25.0 kPa (T_sat=65.0°C), T_surf=65.5°C (P_sat=25.6 kPa &gt; P1), h₀=0.061 kW/m²K.</div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 2: 1-BOSQICH: MEXANIK YIG'ISH VA SOP   -->
+    <!-- ========================================== -->
+    <section id="tab-step1" class="tab-content hidden flex flex-col gap-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+        
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-4 mb-4">
+          <div>
+            <span class="text-xs font-bold text-cyan-400 uppercase tracking-wider">1-Bosqich (Muddati: 1–2-kun) — PASS GATE #0</span>
+            <h2 class="text-lg font-bold text-white mt-0.5">Stendni Mexanik Yig‘ish va Payvand/Flanets Germetizatsiyasi</h2>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="step1-status-badge" class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-950 text-emerald-400 border border-emerald-800">
+              PASS (ΔT = 5.8% ≤ 8%)
+            </span>
+          </div>
+        </div>
+
+        <p class="text-xs text-slate-400 leading-relaxed mb-6">
+          Ushbu bosqichda 60L shaffof kamera barqaror stolga mahkamlanadi, 0.5 m² SS316L sirtiga uglerodli biomassa absorber o'rnatiladi, near-IR lampa kollimator bilan tekshiriladi va 9 nuqtali termojuft orqali harorat notekisligi (T_surf ≈ 65.5°C da ΔT ≤ 8%) tekshiriladi. Agar ΔT &gt; 8% bo'lsa, 1-Bosqich FAIL bo'ladi!
+        </p>
+
+        <!-- Mechanical Checklist Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex items-start gap-3">
+            <input type="checkbox" id="chk-s1-1" class="mt-1 w-4 h-4 rounded text-cyan-600 bg-slate-800 border-slate-700 cursor-pointer" checked>
+            <div>
+              <label for="chk-s1-1" class="text-xs font-bold text-white cursor-pointer">1. Vakuum kamerani o‘rnatish</label>
+              <p class="text-[11px] text-slate-400 mt-1">60 litrli shaffof akril/shisha vakuum kamerani tebranishlarsiz barqaror ishchi stolga mahkamlash.</p>
+            </div>
+          </div>
+
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex items-start gap-3">
+            <input type="checkbox" id="chk-s1-2" class="mt-1 w-4 h-4 rounded text-cyan-600 bg-slate-800 border-slate-700 cursor-pointer" checked>
+            <div>
+              <label for="chk-s1-2" class="text-xs font-bold text-white cursor-pointer">2. Interfatsial sirtni montaj qilish</label>
+              <p class="text-[11px] text-slate-400 mt-1">0.5 m² li SS316L taglik ustiga 3.0 mm qalinlikdagi uglerodli biomassa qatlamini yotqizish. Chekkalarini to'liq germetiklash.</p>
+            </div>
+          </div>
+
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex items-start gap-3">
+            <input type="checkbox" id="chk-s1-3" class="mt-1 w-4 h-4 rounded text-cyan-600 bg-slate-800 border-slate-700 cursor-pointer" checked>
+            <div>
+              <label for="chk-s1-3" class="text-xs font-bold text-white cursor-pointer">3. IR Lampa va Qopqoqni moslash</label>
+              <p class="text-[11px] text-slate-400 mt-1">Borosilikat shisha qopqoqni mahkamlash. 150–250 W near-IR lampani kollimator reflektor bilan birga sirt ustiga o‘rnatish.</p>
+            </div>
+          </div>
+
+          <!-- Interactive Thermal Uniformity Check around 65.5°C (Fix #3.3: Dynamically controls Step 1 PASS/FAIL gate) -->
+          <div class="bg-slate-950 border border-cyan-900/60 rounded-xl p-4 flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-cyan-400">4. 9-Nuqtali Termojuft Tekshiruvi (ΔT ≤ 8% Gate)</span>
+              <span id="badge-optics-check" class="text-[10px] px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 font-bold">Bajarildi: 5.8%</span>
+            </div>
+            <p class="text-[11px] text-slate-400">Lampa balandligini sozlab, 9 nuqta bo‘ylab harorat notekisligi me'yorda (≤8%) ekanligini tasdiqlang:</p>
+            
+            <div class="flex items-center gap-3 mt-1">
+              <label class="text-[11px] text-slate-300">Lampa Balandligi:</label>
+              <input type="range" id="rng-lamp-height" min="110" max="200" value="145" class="flex-1 accent-cyan-500">
+              <span id="txt-lamp-height" class="text-xs font-mono font-bold text-cyan-400 w-12 text-right">145 mm</span>
+            </div>
+
+            <!-- 3x3 Heatmap Grid preview around 65.5°C -->
+            <div class="grid grid-cols-3 gap-1 bg-slate-900 p-2 rounded-lg mt-2 text-center text-[10px] font-mono">
+              <div class="bg-amber-950/80 text-amber-300 p-1 rounded" id="grid-t1">64.9°C</div>
+              <div class="bg-amber-900/80 text-amber-200 p-1 rounded" id="grid-t2">65.6°C</div>
+              <div class="bg-amber-950/80 text-amber-300 p-1 rounded" id="grid-t3">64.7°C</div>
+              <div class="bg-amber-900/80 text-amber-200 p-1 rounded" id="grid-t4">65.8°C</div>
+              <div class="bg-red-900/80 text-red-200 p-1 rounded font-bold" id="grid-t5">66.5°C</div>
+              <div class="bg-amber-900/80 text-amber-200 p-1 rounded" id="grid-t6">65.7°C</div>
+              <div class="bg-amber-950/80 text-amber-300 p-1 rounded" id="grid-t7">64.8°C</div>
+              <div class="bg-amber-900/80 text-amber-200 p-1 rounded" id="grid-t8">65.5°C</div>
+              <div class="bg-amber-950/80 text-amber-300 p-1 rounded" id="grid-t9">65.0°C</div>
+            </div>
+          </div>
+
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex items-start gap-3">
+            <input type="checkbox" id="chk-s1-5" class="mt-1 w-4 h-4 rounded text-cyan-600 bg-slate-800 border-slate-700 cursor-pointer" checked>
+            <div>
+              <label for="chk-s1-5" class="text-xs font-bold text-white cursor-pointer">5. Reference Cell (Q1) ni joylashtirish</label>
+              <p class="text-[11px] text-slate-400 mt-1">IR lampa bilan bir tekislikda, lekin uning to‘g‘ridan-to‘g‘ri soyasi tushmaydigan qilib piranometr/reference cell o‘rnatildi.</p>
+            </div>
+          </div>
+
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex items-start gap-3">
+            <input type="checkbox" id="chk-s1-6" class="mt-1 w-4 h-4 rounded text-cyan-600 bg-slate-800 border-slate-700 cursor-pointer" checked>
+            <div>
+              <label for="chk-s1-6" class="text-xs font-bold text-white cursor-pointer">6. Dry Cooler (Kondensator) va Quvurlarni ulash</label>
+              <p class="text-[11px] text-slate-400 mt-1">Radiator va fanni kameraning bug‘ chiqish yo‘liga germetik ulash. GAC kartrijidan oldin (V1) va keyin (V2) alohida namuna olish klapanlarini hosil qilish.</p>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="mt-6 flex justify-end">
+          <button id="btn-complete-step1" class="px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition flex items-center gap-2">
+            <span>1-Bosqich PASS Gate Tasdiqlash</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+          </button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 3: 2-BOSQICH: KALIBRLASH (16 TA NUQTA) -->
+    <!-- ========================================== -->
+    <section id="tab-step2" class="tab-content hidden flex flex-col gap-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+        
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-4 mb-4">
+          <div>
+            <span class="text-xs font-bold text-cyan-400 uppercase tracking-wider">2-Bosqich (Muddati: 2-kun)</span>
+            <h2 class="text-lg font-bold text-white mt-0.5">Datchiklarni Ulanish va Kalibrlash Protokoli</h2>
+          </div>
+          <button id="btn-run-all-calib" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition">
+            ⚡ Avtomatik 2-Nuqtali Kalibrlash
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-white">T1..T7 Termojuftlar</span>
+                <span id="cal-badge-tc" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">Kalibrlangan</span>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-2">Muzli suv (0°C) va qaynayotgan suv (100°C) bo'yicha tekshirish.</p>
+              <div class="mt-3 text-xs font-mono space-y-1 text-slate-300">
+                <div>0°C tekshiruv: <span class="text-cyan-400 font-bold">+0.05°C</span></div>
+                <div>100°C tekshiruv: <span class="text-amber-400 font-bold">+99.95°C</span></div>
+              </div>
+            </div>
+            <button id="btn-cal-tc" class="mt-4 w-full py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-200 transition">
+              Qayta tekshirish (0 / 100°C)
+            </button>
+          </div>
+
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-white">Pt100 Qarshilikli</span>
+                <span id="cal-badge-pt100" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">Kalibrlangan</span>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-2">2 nuqtali etalonli qarshilik tekshiruvi (R₀ = 100.00 Ω).</p>
+              <div class="mt-3 text-xs font-mono space-y-1 text-slate-300">
+                <div>R_offset: <span class="text-cyan-400 font-bold">0.02 Ω</span></div>
+                <div>Aniqlik: <span class="text-emerald-400 font-bold">±0.05 °C</span></div>
+              </div>
+            </div>
+            <button id="btn-cal-pt100" class="mt-4 w-full py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-200 transition">
+              Pt100 2-Nuqtali Tekshiruv
+            </button>
+          </div>
+
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-white">P1 & P2 Bosim</span>
+                <span id="cal-badge-press" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">Nolga Keltirilgan</span>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-2">Atmosfera bosimi (101.3 kPa) bilan taqqoslab nolga keltirish.</p>
+              <div class="mt-3 text-xs font-mono space-y-1 text-slate-300">
+                <div>P_atm o'qish: <span class="text-cyan-400 font-bold">101.32 kPa</span></div>
+                <div>Tare: <span class="text-emerald-400 font-bold">0.00 kPa</span></div>
+              </div>
+            </div>
+            <button id="btn-cal-press" class="mt-4 w-full py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-200 transition">
+              Atmosferada Tara Qilish
+            </button>
+          </div>
+
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-white">Tarozilar M1 / M2</span>
+                <span id="cal-badge-scale" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">Tekshirilgan</span>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-2">100g va 500g standart etalon og'irliklari bilan testlash.</p>
+              <div class="mt-3 text-xs font-mono space-y-1 text-slate-300">
+                <div>Etalon 100g: <span class="text-emerald-400 font-bold">100.002 g</span></div>
+                <div>Etalon 500g: <span class="text-emerald-400 font-bold">500.004 g</span></div>
+              </div>
+            </div>
+            <button id="btn-cal-scale" class="mt-4 w-full py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-200 transition">
+              100g / 500g Etalon Testi
+            </button>
+          </div>
+
+        </div>
+
+        <div class="bg-slate-950 border border-slate-800 rounded-xl p-4">
+          <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">
+            Barcha 16 ta Kanalning Data Logger / Arduino / Raspberry Pi Statusi
+          </h3>
+          <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 text-center text-xs font-mono">
+            <div id="ch-box-1" class="p-2 bg-slate-900 rounded border border-emerald-900/50"><span class="text-slate-400 block text-[10px]">CH-01</span>T1: <span id="ch-stat-1" class="text-emerald-400">OK</span></div>
+            <div class="p-2 bg-slate-900 rounded border border-emerald-900/50"><span class="text-slate-400 block text-[10px]">CH-02</span>T2: <span class="text-emerald-400">OK</span></div>
+            <div class="p-2 bg-slate-900 rounded border border-emerald-900/50"><span class="text-slate-400 block text-[10px]">CH-03</span>T3: <span class="text-emerald-400">OK</span></div>
+            <div class="p-2 bg-slate-900 rounded border border-emerald-900/50"><span class="text-slate-400 block text-[10px]">CH-04</span>T4: <span class="text-emerald-400">OK</span></div>
+            <div class="p-2 bg-slate-900 rounded border border-emerald-900/50"><span class="text-slate-400 block text-[10px]">CH-05</span>T5: <span class="text-emerald-400">OK</span></div>
+            <div class="p-2 bg-slate-900 rounded border border-emerald-900/50"><span class="text-slate-400 block text-[10px]">CH-06</span>T6: <span class="text-emerald-400">OK</span></div>
+            <div class="p-2 bg-slate-900 rounded border border-emerald-900/50"><span class="text-slate-400 block text-[10px]">CH-07</span>T7: <span class="text-emerald-400">OK</span></div>
+            <div class="p-2 bg-slate-900 rounded border border-emerald-900/50"><span class="text-slate-400 block text-[10px]">CH-08</span>P1: <span class="text-emerald-400">OK</span></div>
+            <div class="p-2 bg-slate-900 rounded border border-emerald-900/50"><span class="text-slate-400 block text-[10px]">CH-09</span>P2: <span class="text-emerald-400">OK</span></div>
+            <div class="p-2 bg-slate-900 rounded border border-emerald-900/50"><span class="text-slate-400 block text-[10px]">CH-10</span>M1: <span class="text-emerald-400">OK</span></div>
+            <div class="p-2 bg-slate-900 rounded border border-emerald-900/50"><span class="text-slate-400 block text-[10px]">CH-11</span>M2: <span class="text-emerald-400">OK</span></div>
+            <div class="p-2 bg-slate-900 rounded border border-emerald-900/50"><span class="text-slate-400 block text-[10px]">CH-12</span>Q1: <span class="text-emerald-400">OK</span></div>
+            <div class="p-2 bg-slate-900 rounded border border-emerald-900/50"><span class="text-slate-400 block text-[10px]">CH-13</span>E1: <span class="text-emerald-400">OK</span></div>
+            <div class="p-2 bg-slate-900 rounded border border-emerald-900/50"><span class="text-slate-400 block text-[10px]">CH-14</span>TDS: <span class="text-emerald-400">OK</span></div>
+            <div class="p-2 bg-slate-900 rounded border border-emerald-900/50"><span class="text-slate-400 block text-[10px]">CH-15</span>pH: <span class="text-emerald-400">OK</span></div>
+            <div class="p-2 bg-slate-900 rounded border border-emerald-900/50"><span class="text-slate-400 block text-[10px]">CH-16</span>NH₃: <span class="text-emerald-400">OK</span></div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 4: 3-BOSQICH: 24 SOATLIK LEAK-TEST     -->
+    <!-- ========================================== -->
+    <section id="tab-step3" class="tab-content hidden flex flex-col gap-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+        
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-4 mb-4">
+          <div>
+            <span class="text-xs font-bold text-cyan-400 uppercase tracking-wider">3-Bosqich (Muddati: 3-kun) — PASS GATE #1</span>
+            <h2 class="text-lg font-bold text-white mt-0.5">24 Soatlik Leak-Test (Germetiklik Sinovi)</h2>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-slate-400">Qat'iy Gate Mezoni:</span>
+            <span class="px-2.5 py-1 rounded bg-slate-800 text-xs font-mono font-bold text-cyan-400 border border-slate-700">
+              ΔP/Δt &lt; 0.20 kPa/soat (4-Bosqichga o'tish sharti)
+            </span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          <!-- Test Controls & Criteria -->
+          <div class="flex flex-col gap-4">
+            
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-4">
+              <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Sinov Bosqichlari</h3>
+              <ol class="text-xs text-slate-400 space-y-2 list-decimal list-inside leading-relaxed">
+                <li><span class="text-white">Vakuum hosil qilish:</span> Nasos orqali kamerani <span class="text-cyan-400 font-bold font-mono">25.0 kPa</span> bosimga tushirish.</li>
+                <li><span class="text-white">Izolyatsiya:</span> Nasosni o'chirib, barcha klapanlarni to'liq germetik yopish.</li>
+                <li><span class="text-white">24 Soatlik monitoring:</span> Bosim ko'tarilish sur'atini soatbay (`0h..24h`) kuzatish.</li>
+              </ol>
+
+              <div class="mt-4 pt-3 border-t border-slate-800 flex flex-col gap-2">
+                <button id="btn-start-leak-test" class="w-full py-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition flex items-center justify-center gap-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/></svg>
+                  24 Soatlik Leak-Testni Boshlash
+                </button>
+                <button id="btn-simulate-leak-fail" class="w-full py-1.5 rounded-lg bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800 text-xs transition font-semibold">
+                  🚨 Sizib chiqish xatosini kiritish (0.62 kPa/soat — Gate BLOCKED)
+                </button>
+                <button id="btn-fix-leak" class="w-full py-1.5 rounded-lg bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-800 text-xs transition font-semibold">
+                  🔧 Sovunli suv bilan tekshirib flanetsni tortish (Gate PASS)
+                </button>
+              </div>
+            </div>
+
+            <!-- Current Rate Gauge Card -->
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col items-center justify-center text-center">
+              <span class="text-xs text-slate-400 font-medium">Hozirgi Bosim Ko'tarilish Tezligi:</span>
+              <div id="leak-rate-display" class="mt-2 text-3xl font-black font-mono text-emerald-400">0.08 kPa/soat</div>
+              <span id="leak-verdict-badge" class="mt-2 px-3 py-1 rounded-full text-xs font-bold bg-emerald-950 text-emerald-400 border border-emerald-800">
+                PASS GATE OCHIQ (4-Bosqich Ruxsat Etilgan)
+              </span>
+              <p class="text-[11px] text-slate-500 mt-2">
+                Diqqat: Agar ΔP/Δt &ge; 0.20 kPa/soat bo'lsa, 4- va 5-bosqichlar avtomatik bloklanadi!
+              </p>
+            </div>
+
+          </div>
+
+          <!-- Leak Test Chart (0h..24h units + Real-time progression when active) -->
+          <div class="lg:col-span-2 bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Vakuum Bosimi Dinamikasi: P(t) [0h – 24h]</h3>
+              <span id="leak-progress-label" class="text-xs font-mono text-cyan-400">P_init: 25.0 kPa | Holat: 24h yakunlangan</span>
+            </div>
+            <div class="relative h-72 w-full">
+              <canvas id="chart-leak"></canvas>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 5: 4-BOSQICH: BASELINE (h0) SINOVI     -->
+    <!-- ========================================== -->
+    <section id="tab-step4" class="tab-content hidden flex flex-col gap-4">
+      
+      <!-- Gate Lock Banner (Shown if Step 1 or Step 3 Failed) -->
+      <div id="gate-lock-step4" class="hidden bg-rose-950/90 border-2 border-rose-600 rounded-2xl p-6 text-center">
+        <div class="text-rose-400 font-black text-lg uppercase tracking-wider">🔒 PASS GATE BLOKLANGAN: Avvalgi Bosqich (Montaj yoki Leak-Test) O'tmadi!</div>
+        <p class="text-xs text-rose-200 mt-2 max-w-xl mx-auto">
+          Hozirgi sizib chiqish tezligi (<span id="gate-lock-leak-val" class="font-mono font-bold">0.62 kPa/soat</span>, talab &lt;0.20) yoki 1-bosqich optik notekisligi (<span id="gate-lock-optics-val" class="font-mono font-bold">5.8%</span>, talab &le;8.0%) mezondan tashqarida. SOP qoidasiga binoan Baseline (h₀) sinovini boshlash taqiqlanadi.
+        </p>
+        <button id="btn-goto-step3-from-4" class="mt-4 px-4 py-2 rounded-lg bg-rose-700 hover:bg-rose-600 text-white text-xs font-bold transition">
+          ⬅️ 3-Bosqichga qaytish va muammoni bartaraf etish
+        </button>
+      </div>
+
+      <div id="content-step4" class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+        
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-4 mb-4">
+          <div>
+            <span class="text-xs font-bold text-cyan-400 uppercase tracking-wider">4-Bosqich (Muddati: 4–5-kun) — PASS GATE #2</span>
+            <h2 class="text-lg font-bold text-white mt-0.5">Bo‘sh Stend va Baseline (h₀) Sinovi (Ichki Izchil Termodinamika)</h2>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-slate-400">Aniqlangan Etalon h₀:</span>
+            <span id="label-h0-val" class="px-3 py-1 rounded bg-indigo-950 text-indigo-300 border border-indigo-800 font-mono font-bold text-sm">
+              0.061 kW/m²·K (61 W/m²·K)
+            </span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          <!-- Mode 1: Dry Stand Baseline -->
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span> 1. Bo‘sh Stend Rejimi (Suvsiz)
+                </h3>
+                <span class="text-xs font-mono text-slate-400">Davomiyligi: 2 soat</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+                Tizimni suvsiz holda 2 soat davomida IR lampa ostida yoqib, devorlar va taglikning termal barqarorligini (thermal baseline) tekshirish.
+              </p>
+
+              <div class="mt-4 bg-slate-900 p-3 rounded-lg border border-slate-800 space-y-1 text-xs font-mono">
+                <div class="flex justify-between text-slate-300">
+                  <span>Devor harorati barqarorligi:</span>
+                  <span class="text-emerald-400 font-bold">±0.3 °C (Barqaror)</span>
+                </div>
+                <div class="flex justify-between text-slate-300">
+                  <span>Parasitic issiqlik yo'qotilishi:</span>
+                  <span class="text-cyan-400 font-bold">14.2 W (7.1%)</span>
+                </div>
+              </div>
+            </div>
+
+            <button id="btn-run-dry-baseline" class="mt-5 w-full py-2.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition">
+              🔥 2 Soatlik Suvsiz Sinovni O'tkazish
+            </button>
+          </div>
+
+          <!-- Mode 2: Clean Baseline (Fix #1 Variant B: h0 = 0.061 kW/m²·K = 61 W/m²·K) -->
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span> 2. Distillangan Suv Rejimi (Etalon h₀)
+                </h3>
+                <span id="badge-h0-measured" class="text-xs font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">O'lchangan (PASS)</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+                Kameraga toza distillangan suv quyib, P1 = 25.0 kPa (T_sat = 65.0°C) va T_surf = 65.5°C da 6 soat sinov o'tkaziladi. Maqsad: Scaling bo‘lmagan sharoitda boshlang‘ich bug‘lanish koeffitsiyenti (h₀ = 0.061 kW/m²·K) etalonini olish.
+              </p>
+
+              <div class="mt-4 bg-slate-900 p-3 rounded-lg border border-slate-800 space-y-1 text-xs font-mono">
+                <div class="flex justify-between text-slate-300">
+                  <span>Bug'lanish oqimi J₀:</span>
+                  <span class="text-cyan-400 font-bold">1.90 kg/m²·h (q₀ = 1238 W/m²)</span>
+                </div>
+                <div class="flex justify-between text-slate-300">
+                  <span>Etalon koeffitsiyent h₀ = q₀ / ΔT:</span>
+                  <span class="text-indigo-400 font-bold">0.061 kW/m²·K (61 W/m²·K)</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-5 flex gap-2">
+              <button id="btn-run-distill-baseline" class="flex-1 py-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition">
+                💧 6 Soatlik h₀ Sinovini Tasdiqlash (0.061 kW/m²K)
+              </button>
+              <button id="btn-reset-h0-gate" class="px-3 py-2.5 rounded-lg bg-slate-800 hover:bg-rose-950 text-slate-400 hover:text-rose-300 border border-slate-700 text-xs transition" title="Gate bloklanishini sinab ko'rish uchun h₀ ni bekor qilish">
+                Reset Gate
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 6: 5-BOSQICH: 30 KUNLIK SINOV (A-D)    -->
+    <!-- ========================================== -->
+    <section id="tab-step5" class="tab-content hidden flex flex-col gap-4">
+      
+      <!-- Gate Lock Banner for Step 5 -->
+      <div id="gate-lock-step5" class="hidden bg-rose-950/90 border-2 border-rose-600 rounded-2xl p-6 text-center">
+        <div class="text-rose-400 font-black text-lg uppercase tracking-wider">🔒 PASS GATE BLOKLANGAN: Avvalgi Bosqich Talablari Bajarilmagan!</div>
+        <p id="gate-lock-step5-reason" class="text-xs text-rose-200 mt-2 max-w-xl mx-auto">
+          1-Bosqich (Optika ΔT &le; 8%), 3-Bosqich (Leak-Test &lt; 0.20 kPa/soat) va 4-Bosqich (Etalon h₀ = 0.061 kW/m²K o'lchovi) to'liq PASS bo'lmaguncha 30 kunlik real dengiz suvi sinoviga ruxsat berilmaydi.
+        </p>
+      </div>
+
+      <div id="content-step5" class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+        
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-4 mb-4">
+          <div>
+            <span class="text-xs font-bold text-cyan-400 uppercase tracking-wider">5-Bosqich (Muddati: 6-kundan boshlab, 30 kun) — PASS GATE #3</span>
+            <h2 class="text-lg font-bold text-white mt-0.5">Real Dengiz Suvi bilan Test Stand Sinoviga Start (Illyustrativ Scaling Modeli)</h2>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="text-xs text-slate-400">Sinov Kuni:</span>
+            <span id="badge-current-day" class="text-sm font-mono font-black px-3 py-1 rounded bg-cyan-950 text-cyan-400 border border-cyan-800">
+              14-kun / 30 kun
+            </span>
+          </div>
+        </div>
+
+        <!-- Day Slider & Phase Controls -->
+        <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 mb-6">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <span class="text-xs font-medium text-slate-300">Sinov Kunini Tanlash / Slayder (300x rejimida kunlar avtomatik siljiydi):</span>
+            <div class="flex items-center gap-2">
+              <button id="btn-sim-severe-scaling" class="text-[11px] px-2.5 py-1 rounded bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800 font-semibold transition">
+                ⚠️ Faza A Og'ir Scaling (&gt;20% tushish — Gate Block)
+              </button>
+              <button id="btn-inspect-clean-surface" class="hidden text-[11px] px-2.5 py-1 rounded bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-800 font-semibold transition animate-pulse">
+                🔍 Sirtni Ko'zdan Kechirish va Tozalash (Unblock Faza B)
+              </button>
+              <span id="slider-day-label" class="text-xs font-bold text-cyan-400 font-mono">14-kun (Faza B)</span>
+            </div>
+          </div>
+          <input type="range" id="rng-test-day" min="1" max="30" value="14" class="w-full accent-cyan-500">
+          
+          <!-- Phase Markers Bar -->
+          <div class="grid grid-cols-4 gap-2 mt-3 text-center text-[10px] font-bold">
+            <div id="phase-pill-a" class="p-1.5 rounded bg-slate-800 text-slate-400 border border-slate-700">Faza A (1–7 kun)<br><span class="font-normal text-[9px]">Tabiiy Scaling</span></div>
+            <div id="phase-pill-b" class="p-1.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-700">Faza B (8–14 kun)<br><span class="font-normal text-[9px]">Back-flush (6h/5min)</span></div>
+            <div id="phase-pill-c" class="p-1.5 rounded bg-slate-800 text-slate-400 border border-slate-700">Faza C (15–21 kun)<br><span class="font-normal text-[9px]">0.4 ppm Gipoxlorit</span></div>
+            <div id="phase-pill-d" class="p-1.5 rounded bg-slate-800 text-slate-400 border border-slate-700">Faza D (22–30 kun)<br><span class="font-normal text-[9px]">24/7 Barqaror Rejim</span></div>
+          </div>
+        </div>
+
+        <!-- 4 Phases Detailed Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+            <div>
+              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">1–7 kun</span>
+              <h3 class="text-xs font-bold text-white mt-1">Faza A: Tabiiy Scaling</h3>
+              <p class="text-[11px] text-slate-400 mt-2 leading-relaxed">
+                35 g/L real dengiz suvi quyiladi. Flush va xlorlashsiz tabiiy tuz qatlami kuzatiladi. 7-kunda h_real va h₀ solishtiriladi (farq &gt;20% bo'lsa Faza B bloklanadi va sirt tekshiriladi).
+              </p>
+            </div>
+            <div class="mt-3 pt-2 border-t border-slate-800 text-[10px] font-mono text-slate-300">
+              7-kun pasayish: <span id="label-phaseA-drop" class="text-amber-400 font-bold">-16.4% (&le;20% OK)</span>
+            </div>
+          </div>
+
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+            <div>
+              <span class="text-[10px] font-bold text-cyan-400 uppercase tracking-wider">8–14 kun</span>
+              <h3 class="text-xs font-bold text-white mt-1">Faza B: Ko'ndalang Back-Flush</h3>
+              <p class="text-[11px] text-slate-400 mt-2 leading-relaxed">
+                Har 6 soatda 5 daqiqali ko‘ndalang oqimli back-flush yoqiladi. Suv balansi va yuvish suvining umumiy sarfi (&le; 5%) qat'iy nazorat qilinadi.
+              </p>
+            </div>
+            <div class="mt-3 pt-2 border-t border-slate-800 text-[10px] font-mono text-slate-300">
+              Flush sarfi: <span class="text-emerald-400 font-bold">3.8% (&le; 5%)</span>
+            </div>
+          </div>
+
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+            <div>
+              <span class="text-[10px] font-bold text-amber-400 uppercase tracking-wider">15–21 kun</span>
+              <h3 class="text-xs font-bold text-white mt-1">Faza C: 0.4 ppm Gipoxlorit</h3>
+              <p class="text-[11px] text-slate-400 mt-2 leading-relaxed">
+                Back-flush ustiga har 24 soatda 10 min 0.4 ppm gipoxlorit bilan yuvish sikli qo‘shiladi. Haftada 1 marta uglerod kuponi (M2) olinib, massa yo‘qotilishi (&le; 5%) tekshiriladi.
+              </p>
+            </div>
+            <div class="mt-3 pt-2 border-t border-slate-800 text-[10px] font-mono text-slate-300">
+              M2 massa yo'qotilishi: <span class="text-emerald-400 font-bold">1.2% (&le; 5%)</span>
+            </div>
+          </div>
+
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+            <div>
+              <span class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">22–30 kun</span>
+              <h3 class="text-xs font-bold text-white mt-1">Faza D: 24/7 Barqaror Rejim</h3>
+              <p class="text-[11px] text-slate-400 mt-2 leading-relaxed">
+                To‘liq avtomatlashtirilgan barqaror rejim. Kondensat sifati har kuni tekshiriladi: TDS &lt;50 mg/L, pH, NH₃ &lt;1.5 mg/L. Sensor uzilishlarini (-999 kodi) nazorat qilish.
+              </p>
+            </div>
+            <div class="mt-3 pt-2 border-t border-slate-800 text-[10px] font-mono text-slate-300">
+              Kondensat TDS: <span class="text-emerald-400 font-bold">14.8 mg/L (&lt;50)</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 30-Day Long-term Degradation and Evaporation Chart (Fix #1 Variant B: Scale 0.040 - 0.070 kW/m²·K) -->
+        <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col mb-6">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">
+              30 Kunlik Bug'lanish Koeffitsiyenti h_eff(t) [Shkala: 0.040 – 0.070 kW/m²·K]
+            </h3>
+            <span class="text-xs font-mono text-indigo-400">Etalon h₀ = 0.061 kW/m²·K | Kritik Chegara (80%): 0.0488 kW/m²·K</span>
+          </div>
+          <div class="relative h-64 w-full">
+            <canvas id="chart-30days"></canvas>
+          </div>
+        </div>
+
+        <!-- 7-Criteria "CONSTRUCTION GO" Final Gate Scorecard -->
+        <div class="bg-slate-950 border border-cyan-900/60 rounded-xl p-4">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div>
+              <h3 class="text-xs font-bold text-cyan-400 uppercase tracking-wider">🏁 Yakuniy «CONSTRUCTION GO» Gate — 7 Mezonli Audit Skorkarti</h3>
+              <p class="text-[11px] text-slate-400">Barcha 7 mezon PASS bo'lgandagina Test Stand keyingi bosqichga («Construction Go» — Illustrative SOP values) tasdiqlanadi:</p>
+            </div>
+            <span id="badge-construction-go" class="px-3 py-1 rounded-full text-xs font-black bg-emerald-950 text-emerald-400 border border-emerald-700 font-mono">
+              ✅ CONSTRUCTION GO: 7/7 PASS
+            </span>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 text-[11px] font-mono">
+            <div id="crit-1" class="p-2 rounded bg-slate-900 border border-emerald-800/60 text-emerald-400">1. Optika ΔT≤8%<br><strong>5.8% (PASS)</strong><div class="text-[8px] text-slate-500 mt-0.5">Illustrative SOP value</div></div>
+            <div id="crit-2" class="p-2 rounded bg-slate-900 border border-emerald-800/60 text-emerald-400">2. Leak &lt;0.2 kPa/h<br><strong>0.08 (PASS)</strong><div class="text-[8px] text-slate-500 mt-0.5">Illustrative SOP value</div></div>
+            <div id="crit-3" class="p-2 rounded bg-slate-900 border border-emerald-800/60 text-emerald-400">3. h_real ≥ 80% h₀<br><strong>96.7% (PASS)</strong><div class="text-[8px] text-slate-500 mt-0.5">Illustrative SOP value</div></div>
+            <div id="crit-4" class="p-2 rounded bg-slate-900 border border-emerald-800/60 text-emerald-400">4. Flush ≤ 5%<br><strong>3.8% (PASS)</strong><div class="text-[8px] text-slate-500 mt-0.5">Illustrative SOP value</div></div>
+            <div id="crit-5" class="p-2 rounded bg-slate-900 border border-emerald-800/60 text-emerald-400">5. Kupon ΔM2 ≤ 5%<br><strong>1.2% (PASS)</strong><div class="text-[8px] text-slate-500 mt-0.5">Illustrative SOP value</div></div>
+            <div id="crit-6" class="p-2 rounded bg-slate-900 border border-emerald-800/60 text-emerald-400">6. TDS &lt;50 / NH₃ &lt;1.5<br><strong>14.8 / 0.24 (PASS)</strong><div class="text-[8px] text-slate-500 mt-0.5">Illustrative SOP value</div></div>
+            <div id="crit-7" class="p-2 rounded bg-slate-900 border border-emerald-800/60 text-emerald-400">7. Ma'lumot (-999 yo'q)<br><strong>VALID (PASS)</strong><div class="text-[8px] text-slate-500 mt-0.5">Illustrative SOP value</div></div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 7: CSV & DATA LOGGER (Fix #3.1: ~6.0 MB Honest Label) -->
+    <!-- ========================================== -->
+    <section id="tab-data" class="tab-content hidden flex flex-col gap-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+        
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-4 mb-4">
+          <div>
+            <span class="text-xs font-bold text-cyan-400 uppercase tracking-wider">Ma'lumotlar Halolligi va Audit Izini Yaratish</span>
+            <h2 class="text-lg font-bold text-white mt-0.5">Haqiqiy 43,200 Qatorli CSV Generator & Telemetriya Jurnali</h2>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button id="btn-export-csv" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-lg shadow-emerald-600/20">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              To'liq 43,200 Qatorli CSV Yuklab Olish (~6.0 MB)
+            </button>
+            <button id="btn-export-csv-demo" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-semibold transition">
+              📄 50 Qatorli Tezkor Namuna (Demo)
+            </button>
+          </div>
+        </div>
+
+        <!-- Non-blocking CSV Generation Progress Bar (Polish #2) -->
+        <div id="csv-progress-container" class="hidden mb-4 bg-slate-950 border border-cyan-800 rounded-xl p-3">
+          <div class="flex items-center justify-between text-xs font-mono mb-1.5">
+            <span id="csv-progress-text" class="text-cyan-400 font-bold">CSV generatsiya qilinmoqda (Asinxron paketli rejim)...</span>
+            <span id="csv-progress-pct" class="text-white font-bold">0%</span>
+          </div>
+          <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+            <div id="csv-progress-bar" class="h-full bg-gradient-to-r from-cyan-500 to-emerald-400 transition-all duration-150" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          <!-- Requirements & Rules Card -->
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col gap-3">
+            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Qat'iy Operator Talablari</h3>
+            
+            <div class="space-y-3 text-xs text-slate-400 leading-relaxed">
+              <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+                <span class="text-white font-bold block mb-1">📁 Haqiqiy 43,200 Qatorli CSV (~6.0 MB):</span>
+                Har 2 sekundda 1 yozuv × 86,400 sekund (24 soat) = <strong>aynan 43,200 ta ma'lumot qatori</strong> (~140 bayt/qator ≈ 6.0 MB) + Disclaimer va metadata sarlavha qatorlari Blob orqali generatsiya qilinadi.
+              </div>
+
+              <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+                <span class="text-white font-bold block mb-1">⚖️ 15 Kunlik Qayta Kalibrlash:</span>
+                Har 15 kunda barcha 16 ta datchik qayta kalibrlanadi.
+              </div>
+
+              <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+                <span class="text-white font-bold block mb-1">🧽 Q1 Reference Cell Tozalash:</span>
+                Har kuni peshinda (12:00–13:00) chang va tuzdan toza spirtli salfetka bilan artib turiladi.
+              </div>
+
+              <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+                <span class="text-white font-bold block mb-1">⚠️ -999 Kaskadli Xatolik:</span>
+                T1 datchigi uzilsa, CSV qatorida <code class="text-rose-400 font-bold">T1 = -999</code>, <code class="text-rose-400 font-bold">T_surf_avg = -999</code> va <code class="text-rose-400 font-bold">h_eff = -999</code> qayd etiladi.
+              </div>
+            </div>
+          </div>
+
+          <!-- Live Table Preview -->
+          <div class="lg:col-span-2 bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">Jonli Oqim Jadvali (So'nggi 6 ta Yozuv Namunasi)</span>
+              <span class="text-[11px] font-mono text-slate-400">To'liq eksport hajmi: <span id="label-csv-rowcount" class="text-emerald-400 font-bold">43,200 qator (~6.0 MB)</span></span>
+            </div>
+
+            <div class="flex-1 overflow-x-auto">
+              <table class="w-full text-left text-[11px] font-mono border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-800 text-slate-400 bg-slate-900/60">
+                    <th class="py-2 px-2.5">Vaqt</th>
+                    <th class="py-2 px-2.5">P1 (kPa)</th>
+                    <th class="py-2 px-2.5">T_surf (°C)</th>
+                    <th class="py-2 px-2.5">T_bulk (°C)</th>
+                    <th class="py-2 px-2.5">h_eff (kW/m²K)</th>
+                    <th class="py-2 px-2.5">M1 (kg)</th>
+                    <th class="py-2 px-2.5">TDS (mg/L)</th>
+                    <th class="py-2 px-2.5">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="csv-preview-tbody" class="divide-y divide-slate-800/60 text-slate-300">
+                  <!-- JS dynamically populates rows -->
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- NOTIFICATION TOAST -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-24 opacity-0 transition-all duration-300 max-w-sm bg-slate-900 border border-cyan-500 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3">
+    <div id="toast-icon" class="w-5 h-5 text-cyan-400 flex-shrink-0">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    </div>
+    <div class="text-xs">
+      <div id="toast-title" class="font-bold text-cyan-300">Xabarnoma</div>
+      <div id="toast-msg" class="text-slate-300 mt-0.5">Operatsiya bajarildi.</div>
+    </div>
+  </div>
+
+  <!-- APPLICATION LOGIC & REAL THERMODYNAMIC ENGINE SCRIPT -->
+  <script>
+    // =========================================================================
+    // 0. ILLUSTRATIVE CONFIGURATION PARAMETERS (SD-OSS-01 Know-How Protection)
+    // =========================================================================
+    // ⚠️ ILLUSTRATIVE VALUES — For training purposes only.
+    // Actual scaling kinetics, back-flush schedules, and chlorine dosing
+    // are proprietary and must be determined experimentally for each system.
+    const CONFIG = {
+      // Scaling rate: fraction of h0 lost per day during natural fouling
+      // Typical range for MED/VC systems: 0.02–0.05 per day
+      SCALING_RATE_NORMAL: 0.0273,  // illustrative
+      SCALING_RATE_SEVERE: 0.038,   // illustrative
+      
+      // Back-flush schedule: interval and duration
+      // Typical: every 4–8 hours, 3–10 minutes
+      FLUSH_INTERVAL_H: 6,          // illustrative
+      FLUSH_DURATION_MIN: 5,        // illustrative
+      
+      // Chlorine dose for bio-fouling control
+      // Typical: 0.2–1.0 ppm free chlorine, once per day
+      CHLORINE_DOSE_PPM: 0.4,       // illustrative
+      
+      // Critical scaling threshold (fraction of h0)
+      // Industry practice: 70–85% of baseline triggers cleaning
+      CRITICAL_THRESHOLD: 0.80      // illustrative
+    };
+
+    // =========================================================================
+    // 1. REAL THERMODYNAMIC & SCALING KINETICS ENGINE (v1.0 — Zero Fudge Factor)
+    // =========================================================================
+    const PhysicsEngine = {
+      // Antoine equation for water vapor saturation pressure: T (°C) -> P_sat (kPa)
+      // log10(P_mmHg) = A - B / (C + T), A=8.07131, B=1730.63, C=233.426
+      calcPsat_kPa(T_C) {
+        const logP_mmHg = 8.07131 - (1730.63 / (233.426 + T_C));
+        const P_mmHg = Math.pow(10, logP_mmHg);
+        return P_mmHg * 0.133322368; // kPa
+      },
+
+      // Inverse Antoine equation: P (kPa) -> T_sat (°C)
+      calcTsat_C(P_kPa) {
+        const P_mmHg = P_kPa / 0.133322368;
+        const T_C = (1730.63 / (8.07131 - Math.log10(P_mmHg))) - 233.426;
+        return T_C;
+      },
+
+      LAMBDA_655: 2346.2, // Unified constant at 65.5°C (kJ/kg)
+      // Latent heat of vaporization of water: T (°C) -> lambda (kJ/kg)
+      calcLatentHeat_kJkg(T_C) {
+        return Number((2500.8 - 2.36 * T_C).toFixed(1));
+      },
+
+      // Compute 30-day h_eff curve dynamically (h0 = 0.061 kW/m²·K, Fix #1 Variant B)
+      compute30DayCurve(h0 = 0.061, severePhaseA = false) {
+        const curve = [];
+        for (let day = 1; day <= 30; day++) {
+          let val = h0;
+          if (day <= 7) {
+            // Phase A: Natural scaling without flush (uses illustrative CONFIG)
+            const k_scale = severePhaseA ? CONFIG.SCALING_RATE_SEVERE : CONFIG.SCALING_RATE_NORMAL;
+            val = h0 * (1 - k_scale * (day - 1));
+          } else if (day <= 14) {
+            // Phase B: Cross-flow back-flush every 6h restores and stabilizes fouling
+            // Day 14 -> 0.0591 kW/m²·K (59.1 W/m²·K = 1199 W/m² / 20.3 K)
+            const baseB = h0 * 0.955;
+            const osc = ((day % 2 === 0) ? 0.0004 : -0.0003) + (day - 8) * 0.0001;
+            val = baseB + osc;
+          } else if (day <= 21) {
+            // Phase C: Back-flush + 0.4 ppm NaOCl bio-fouling removal
+            const baseC = h0 * 0.972;
+            const osc = ((day % 2 === 0) ? 0.0003 : -0.0002);
+            val = baseC + osc; // ~0.0595 kW/m²·K
+          } else {
+            // Phase D: 24/7 automated steady-state
+            const baseD = h0 * 0.976;
+            const osc = ((day % 3 === 0) ? 0.0002 : -0.0002);
+            val = baseD + osc; // ~0.0596 kW/m²·K
+          }
+          curve.push(Number(val.toFixed(4)));
+        }
+        return curve;
+      }
+    };
+
+    // =========================================================================
+    // 2. CENTRAL APPLICATION STATE (P1=25.0 kPa, T_surf=65.5°C, h0=0.061, h_eff=0.059)
+    // =========================================================================
+    const state = {
+      isRunning: true,
+      eStopActive: false,
+      soundEnabled: true,
+      timeSpeed: 1, // 1x, 10x, 60x, 300x
+      elapsedSeconds: 0,
+      currentDay: 14,
+      lampHeight: 145, // mm
+      lampPower: 205, // W
+
+      // Pass Gates State (Fix #3.3: Step 1 is dynamically evaluated)
+      step1Passed: true, // t_delta_pct <= 8.0
+      step2Passed: true,
+      step3Passed: true, // Leak rate < 0.20 kPa/h
+      step4Passed: true, // Baseline h0 measured
+      phaseASevereScaling: false,
+
+      // Leak Test State
+      leakTestActive: false,
+      leakTestSimHours: 24,
+      leakPressure: 25.0, // kPa
+      leakRate: 0.08, // kPa/soat (<0.20 PASS)
+
+      // Fault Injection State
+      faultInjected: false,
+
+      // Thermodynamic & Process Variables (Fixes #1 & #2: Overheated surface 65.5°C > T_sat 65.0°C)
+      p1: 25.0, // kPa (T_sat = 65.0°C)
+      p2: 25.3, // kPa
+      t1: 66.1, // °C
+      t2: 64.8, // °C
+      t3: 65.6, // °C
+      t_surf: 65.5, // °C (P_sat = 25.6 kPa > 25.0 kPa -> net evaporation active!)
+      t_bulk: 45.2, // °C (T4) -> ΔT = 65.5 - 45.2 = 20.3 K
+      t5_vapor: 65.1, // °C
+      t6_cond_in: 58.4, // °C
+      t7_cond_out: 26.4, // °C
+      t_delta_pct: 5.8, // %
+
+      h0: 0.061, // kW/m²·K (61 W/m²·K — clean distilled water baseline)
+      h_real: 0.0591, // kW/m²·K (59.1 W/m²·K = 1199 W/m² / 20.3 K — zero fudge factor!)
+      j_flux: 1.84, // kg/m²·h
+      mass_rate_kgh: 0.92, // kg/h (1.84 * 0.5 m²)
+      mass_rate_kgs: 0.00025556, // kg/s (0.92 / 3600)
+      m1_accumulated: 1.420, // kg
+      q1_flux: 985, // W/m²
+      tds: 14.8, // mg/L
+      ph: 7.18,
+      nh3: 0.24, // mg/L
+      m2_coupon: 12.450, // g
+      activeTab: 'tab-scada',
+      recentRows: [],
+      hHistory: [0.0591, 0.0591, 0.0591, 0.0591, 0.0591]
+    };
+
+    // Web Audio Synthesizer
+    let audioCtx = null;
+    function playBeep(freq = 600, duration = 0.1, type = 'sine') {
+      if (!state.soundEnabled) return;
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    // Toast notification
+    function showToast(title, msg, isError = false) {
+      const toast = document.getElementById('toast');
+      const tTitle = document.getElementById('toast-title');
+      const tMsg = document.getElementById('toast-msg');
+      if (!toast) return;
+
+      tTitle.textContent = title;
+      tMsg.textContent = msg;
+
+      if (isError) {
+        toast.className = 'fixed bottom-5 right-5 z-50 transform translate-y-0 opacity-100 transition-all duration-300 max-w-sm bg-slate-900 border border-rose-500 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3';
+        tTitle.className = 'font-bold text-rose-400';
+        playBeep(320, 0.3, 'sawtooth');
+      } else {
+        toast.className = 'fixed bottom-5 right-5 z-50 transform translate-y-0 opacity-100 transition-all duration-300 max-w-sm bg-slate-900 border border-cyan-500 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3';
+        tTitle.className = 'font-bold text-cyan-300';
+        playBeep(880, 0.08, 'sine');
+      }
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-24', 'opacity-0');
+      }, 3800);
+    }
+
+    // Logger
+    function logMessage(msg, type = 'info') {
+      const box = document.getElementById('operator-log-box');
+      if (!box) return;
+      const now = new Date();
+      const timeStr = now.toTimeString().split(' ')[0];
+      const div = document.createElement('div');
+      
+      let colorClass = 'text-slate-300';
+      if (type === 'success') colorClass = 'text-emerald-400';
+      if (type === 'warn') colorClass = 'text-amber-400';
+      if (type === 'error') colorClass = 'text-rose-400 font-bold';
+
+      div.className = colorClass;
+      div.innerHTML = `<span class="text-slate-500">[${timeStr}]</span> ${msg}`;
+      box.appendChild(div);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    // =========================================================================
+    // 3. PASS GATES & SYSTEM STATE MANAGEMENT (Fix #3.3: Dynamic Step 1 Gate)
+    // =========================================================================
+    function evaluatePassGatesAndHealth() {
+      // Fix #3.3: Dynamically evaluate Step 1 Gate (ΔT <= 8.0%)
+      state.step1Passed = state.t_delta_pct <= 8.0;
+      // Evaluate Step 3 Gate: Leak rate < 0.20 kPa/h
+      state.step3Passed = state.leakRate < 0.20;
+
+      // Update Step 1 Navigation Badge & Header Badge
+      const navS1 = document.getElementById('nav-badge-s1');
+      if (navS1) {
+        navS1.textContent = state.step1Passed ? 'PASS' : 'FAIL';
+        navS1.className = state.step1Passed
+          ? 'text-[10px] px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-400 border border-emerald-800'
+          : 'text-[10px] px-1.5 py-0.2 rounded bg-rose-950 text-rose-400 border border-rose-800 animate-pulse';
+      }
+      const s1StatusBadge = document.getElementById('step1-status-badge');
+      if (s1StatusBadge) {
+        s1StatusBadge.textContent = state.step1Passed
+          ? `PASS (ΔT = ${state.t_delta_pct.toFixed(1)}% ≤ 8%)`
+          : `FAIL (ΔT = ${state.t_delta_pct.toFixed(1)}% > 8%!)`;
+        s1StatusBadge.className = state.step1Passed
+          ? 'px-3 py-1 rounded-full text-xs font-bold bg-emerald-950 text-emerald-400 border border-emerald-800'
+          : 'px-3 py-1 rounded-full text-xs font-bold bg-rose-950 text-rose-400 border border-rose-800 animate-pulse';
+      }
+
+      // Update Step 3 Navigation Badge
+      const navS3 = document.getElementById('nav-badge-s3');
+      if (navS3) {
+        navS3.textContent = state.step3Passed ? 'PASS' : 'FAIL';
+        navS3.className = state.step3Passed
+          ? 'text-[10px] px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-400 border border-emerald-800'
+          : 'text-[10px] px-1.5 py-0.2 rounded bg-rose-950 text-rose-400 border border-rose-800 animate-pulse';
+      }
+
+      const step4Unlocked = state.step1Passed && state.step3Passed;
+      const navS4 = document.getElementById('nav-badge-s4');
+      if (navS4) {
+        if (!step4Unlocked) {
+          navS4.textContent = 'LOCKED';
+          navS4.className = 'text-[10px] px-1.5 py-0.2 rounded bg-rose-950 text-rose-400 border border-rose-800';
+        } else {
+          navS4.textContent = state.step4Passed ? 'PASS' : 'WAIT';
+          navS4.className = state.step4Passed
+            ? 'text-[10px] px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-400 border border-emerald-800'
+            : 'text-[10px] px-1.5 py-0.2 rounded bg-amber-950 text-amber-400 border border-amber-800';
+        }
+      }
+
+      const navS5 = document.getElementById('nav-badge-s5');
+      const step5Unlocked = state.step1Passed && state.step3Passed && state.step4Passed;
+      if (navS5) {
+        navS5.textContent = step5Unlocked ? 'ACTIVE' : 'LOCKED';
+        navS5.className = step5Unlocked
+          ? 'text-[10px] px-1.5 py-0.2 rounded bg-cyan-950 text-cyan-400 border border-cyan-800'
+          : 'text-[10px] px-1.5 py-0.2 rounded bg-rose-950 text-rose-400 border border-rose-800';
+      }
+
+      // Gate Lock Banners on Step 4 & Step 5
+      const lock4 = document.getElementById('gate-lock-step4');
+      const cont4 = document.getElementById('content-step4');
+      const lockLeakVal = document.getElementById('gate-lock-leak-val');
+      const lockOpticsVal = document.getElementById('gate-lock-optics-val');
+      if (lockLeakVal) lockLeakVal.textContent = `${state.leakRate.toFixed(2)} kPa/soat`;
+      if (lockOpticsVal) lockOpticsVal.textContent = `${state.t_delta_pct.toFixed(1)}%`;
+      if (lock4 && cont4) {
+        lock4.classList.toggle('hidden', step4Unlocked);
+        cont4.classList.toggle('hidden', !step4Unlocked);
+      }
+
+      const lock5 = document.getElementById('gate-lock-step5');
+      const cont5 = document.getElementById('content-step5');
+      if (lock5 && cont5) {
+        lock5.classList.toggle('hidden', step5Unlocked);
+        cont5.classList.toggle('hidden', !step5Unlocked);
+      }
+
+      // System Top Status Badge
+      const sysBadge = document.getElementById('badge-system-state');
+      if (sysBadge) {
+        if (state.eStopActive) {
+          sysBadge.textContent = "TIZIM: AVARIYA TO'XTATISH (E-STOP)";
+          sysBadge.className = 'text-xs px-2 py-0.5 rounded-full bg-rose-950 text-rose-400 border border-rose-800 font-mono font-bold animate-pulse';
+        } else if (state.faultInjected) {
+          sysBadge.textContent = 'TIZIM: WARNING / DATA INVALID (-999)';
+          sysBadge.className = 'text-xs px-2 py-0.5 rounded-full bg-amber-950 text-amber-400 border border-amber-700 font-mono font-bold animate-pulse';
+        } else if (!state.step1Passed || !state.step3Passed || state.phaseASevereScaling) {
+          sysBadge.textContent = 'TIZIM: SOP GATE BLOCKED';
+          sysBadge.className = 'text-xs px-2 py-0.5 rounded-full bg-rose-950 text-rose-400 border border-rose-800 font-mono font-bold';
+        } else {
+          sysBadge.textContent = 'TIZIM: NORMAL (V6.1 FIZIKA)';
+          sysBadge.className = 'text-xs px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 font-mono';
+        }
+      }
+
+      updateConstructionGoScorecard();
+    }
+
+    function updateConstructionGoScorecard() {
+      const c1Ok = state.step1Passed;
+      const c2Ok = state.step3Passed;
+      const c3Ok = !state.phaseASevereScaling && (state.h_real >= state.h0 * CONFIG.CRITICAL_THRESHOLD);
+      const c4Ok = true; // Flush 3.8% <= 5%
+      const c5Ok = true; // Coupon 1.2% <= 5%
+      const c6Ok = state.tds < 50 && state.nh3 < 1.5;
+      const c7Ok = !state.faultInjected;
+
+      const setCard = (id, title, valStr, ok) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.className = ok
+          ? 'p-2 rounded bg-slate-900 border border-emerald-800/60 text-emerald-400'
+          : 'p-2 rounded bg-rose-950/60 border border-rose-700 text-rose-300 animate-pulse';
+        el.innerHTML = `${title}<br><strong>${valStr} (${ok ? 'PASS' : 'FAIL'})</strong><div class="text-[8px] text-slate-500 mt-0.5">Illustrative SOP value</div>`;
+      };
+
+      setCard('crit-1', '1. Optika ΔT≤8%', `${state.t_delta_pct.toFixed(1)}%`, c1Ok);
+      setCard('crit-2', '2. Leak <0.2 kPa/h', `${state.leakRate.toFixed(2)}`, c2Ok);
+      const hRatio = state.faultInjected ? 'ERR' : `${((state.h_real / state.h0) * 100).toFixed(1)}%`;
+      setCard('crit-3', '3. h_real ≥ 80% h₀', hRatio, c3Ok && !state.faultInjected);
+      setCard('crit-4', '4. Flush ≤ 5%', '3.8%', c4Ok);
+      setCard('crit-5', '5. Kupon ΔM2 ≤ 5%', '1.2%', c5Ok);
+      setCard('crit-6', '6. TDS <50 / NH₃ <1.5', `${state.tds.toFixed(1)} / ${state.nh3}`, c6Ok);
+      setCard('crit-7', "7. Ma'lumot (-999 yo'q)", c7Ok ? 'VALID' : '-999 ERR', c7Ok);
+
+      const passCount = [c1Ok, c2Ok, c3Ok && !state.faultInjected, c4Ok, c5Ok, c6Ok, c7Ok].filter(Boolean).length;
+      const badgeGo = document.getElementById('badge-construction-go');
+      if (badgeGo) {
+        if (passCount === 7) {
+          badgeGo.textContent = '✅ CONSTRUCTION GO: 7/7 PASS';
+          badgeGo.className = 'px-3 py-1 rounded-full text-xs font-black bg-emerald-950 text-emerald-400 border border-emerald-700 font-mono';
+        } else {
+          badgeGo.textContent = `❌ CONSTRUCTION BLOCKED: ${passCount}/7 PASS`;
+          badgeGo.className = 'px-3 py-1 rounded-full text-xs font-black bg-rose-950 text-rose-400 border border-rose-700 font-mono animate-pulse';
+        }
+      }
+    }
+
+    // =========================================================================
+    // 4. REAL-TIME UI & CASCADE PROPAGATION RENDERER (Exact q_evap / ΔT)
+    // =========================================================================
+    function renderAllTelemetry() {
+      const Tsat = PhysicsEngine.calcTsat_C(state.p1);
+      const Psat_surf = PhysicsEngine.calcPsat_kPa(state.t_surf);
+      const lambda = PhysicsEngine.calcLatentHeat_kJkg(state.t_surf);
+      const dT = Math.max(0.1, state.t_surf - state.t_bulk);
+
+      // Update P1 & T_sat
+      document.getElementById('kpi-p1').textContent = state.p1.toFixed(1);
+      document.getElementById('kpi-tsat').textContent = `${Tsat.toFixed(1)}°C`;
+      document.getElementById('kpi-p2').textContent = state.p2.toFixed(1);
+      document.getElementById('svg-p1-text').textContent = `${state.p1.toFixed(1)} kPa`;
+
+      // Check Fault Cascade (-999 propagation)
+      const cardTsurf = document.getElementById('card-kpi-tsurf');
+      const cardHreal = document.getElementById('card-kpi-hreal');
+      const kpiTsurf = document.getElementById('kpi-tsurf');
+      const unitTsurf = document.getElementById('unit-tsurf');
+      const badgeTsurf = document.getElementById('badge-kpi-tsurf');
+      const kpiHreal = document.getElementById('kpi-hreal');
+      const unitHreal = document.getElementById('unit-hreal');
+      const badgeHreal = document.getElementById('badge-kpi-hreal');
+      const kpiLoss = document.getElementById('kpi-scaling-loss');
+      const telBadge = document.getElementById('telemetry-health-badge');
+      const chBox1 = document.getElementById('ch-box-1');
+      const chStat1 = document.getElementById('ch-stat-1');
+
+      if (state.faultInjected) {
+        document.getElementById('val-t1').textContent = '-999 (UZILDI)';
+        document.getElementById('val-t1').className = 'text-rose-400 font-black text-sm animate-pulse';
+
+        kpiTsurf.textContent = '-999';
+        kpiTsurf.className = 'text-2xl font-black text-rose-400 font-mono animate-pulse';
+        unitTsurf.textContent = 'NaN';
+        badgeTsurf.textContent = 'DATA INVALID';
+        badgeTsurf.className = 'text-rose-400 font-mono text-[10px] font-bold';
+        cardTsurf.className = 'bg-rose-950/30 border border-rose-600 rounded-xl p-3 flex flex-col justify-between transition';
+
+        kpiHreal.textContent = '-999';
+        kpiHreal.className = 'text-2xl font-black text-rose-400 font-mono animate-pulse';
+        unitHreal.textContent = 'NaN';
+        badgeHreal.textContent = 'DATA INVALID';
+        badgeHreal.className = 'text-rose-400 font-mono text-[10px] font-bold';
+        kpiLoss.textContent = 'ERR -999';
+        kpiLoss.className = 'font-mono text-rose-400 font-bold';
+        cardHreal.className = 'bg-rose-950/30 border border-rose-600 rounded-xl p-3 flex flex-col justify-between transition';
+
+        document.getElementById('svg-tsurf-text').textContent = '-999 (ERR)';
+        document.getElementById('eq-psat').textContent = 'NaN';
+        document.getElementById('eq-dt').textContent = 'NaN (-999)';
+        document.getElementById('eq-heff').textContent = '-999 (DATA INVALID)';
+
+        if (telBadge) {
+          telBadge.textContent = 'DATA INVALID (-999)';
+          telBadge.className = 'text-[10px] px-1.5 py-0.5 rounded bg-rose-950 text-rose-400 border border-rose-700 font-mono font-bold animate-pulse';
+        }
+        if (chBox1 && chStat1) {
+          chBox1.className = 'p-2 bg-rose-950/50 rounded border border-rose-600';
+          chStat1.textContent = '-999';
+          chStat1.className = 'text-rose-400 font-bold';
+        }
+      } else {
+        // Normal Valid Telemetry — Direct First-Principles Calculation (Zero Fudge Factor)
+        document.getElementById('val-t1').textContent = `${state.t1.toFixed(1)} °C`;
+        document.getElementById('val-t1').className = 'text-amber-400 font-bold text-sm';
+
+        const q_evap = (state.j_flux / 3600) * (lambda * 1000); // W/m² (~1199 W/m²)
+        const raw_h_kW = (q_evap / dT) / 1000;
+        state.hHistory.push(raw_h_kW);
+        if (state.hHistory.length > 5) state.hHistory.shift();
+        const avg_h_kW = state.hHistory.reduce((a, b) => a + b, 0) / state.hHistory.length;
+        state.h_real = Number(avg_h_kW.toFixed(4)); // 5-nuqtali harakatlanuvchi o'rtacha
+        const h_eff_W = state.h_real * 1000;
+
+        kpiTsurf.textContent = state.t_surf.toFixed(1);
+        kpiTsurf.className = 'text-2xl font-black text-amber-400 font-mono';
+        unitTsurf.textContent = '°C';
+        badgeTsurf.textContent = '+0.5K Overheat';
+        badgeTsurf.className = 'text-emerald-400 font-mono text-[10px]';
+        cardTsurf.className = 'bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col justify-between transition';
+
+        kpiHreal.textContent = state.h_real.toFixed(3);
+        kpiHreal.className = 'text-2xl font-black text-indigo-400 font-mono';
+        unitHreal.textContent = 'kW/m²K';
+        badgeHreal.textContent = 'q_evap / ΔT';
+        badgeHreal.className = 'text-indigo-400 font-mono text-[10px]';
+        cardHreal.className = 'bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col justify-between transition';
+
+        const lossPct = (((state.h_real - state.h0) / state.h0) * 100).toFixed(1);
+        kpiLoss.textContent = `${lossPct}%`;
+        kpiLoss.className = (lossPct < -20) ? 'font-mono text-rose-400 font-bold' : 'font-mono text-emerald-400 font-bold';
+
+        document.getElementById('svg-tsurf-text').textContent = `${state.t_surf.toFixed(1)}°C`;
+        document.getElementById('eq-psat').textContent = `${Psat_surf.toFixed(1)} kPa (>25.0 kPa ✓)`;
+        document.getElementById('eq-lambda').textContent = `${lambda.toFixed(1)} kJ/kg`;
+        document.getElementById('eq-dt').textContent = `${dT.toFixed(1)} K`;
+        document.getElementById('eq-qevap').textContent = `${q_evap.toFixed(0)} W/m²`;
+        document.getElementById('eq-heff').textContent = `${state.h_real.toFixed(3)} kW/m²·K (${h_eff_W.toFixed(0)} W/m²·K)`;
+
+        if (telBadge) {
+          telBadge.textContent = 'VALID (16/16)';
+          telBadge.className = 'text-[10px] px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 font-mono';
+        }
+        if (chBox1 && chStat1) {
+          chBox1.className = 'p-2 bg-slate-900 rounded border border-emerald-900/50';
+          chStat1.textContent = 'OK';
+          chStat1.className = 'text-emerald-400';
+        }
+      }
+
+      // Update secondary temperatures & flows
+      document.getElementById('val-t2').textContent = `${state.t2.toFixed(1)} °C`;
+      document.getElementById('val-t3').textContent = `${state.t3.toFixed(1)} °C`;
+      document.getElementById('val-t4').textContent = `${state.t_bulk.toFixed(1)} °C`;
+      document.getElementById('val-t5').textContent = `${state.t5_vapor.toFixed(1)} °C`;
+      document.getElementById('val-t6').textContent = `${state.t6_cond_in.toFixed(1)} °C`;
+      document.getElementById('val-t7').textContent = `${state.t7_cond_out.toFixed(1)} °C`;
+      document.getElementById('val-e1').textContent = `${state.lampPower} W`;
+      document.getElementById('kpi-e1').textContent = state.lampPower;
+      document.getElementById('kpi-tbulk').textContent = `${state.t_bulk.toFixed(1)}°C`;
+      document.getElementById('svg-t4-text').textContent = `${state.t_bulk.toFixed(1)}°C`;
+
+      // Update M1 & Evaporation Rate
+      document.getElementById('kpi-m1').textContent = state.m1_accumulated.toFixed(3);
+      document.getElementById('kpi-evaprate').textContent = state.j_flux.toFixed(2);
+      document.getElementById('kpi-massrate').textContent = state.mass_rate_kgh.toFixed(2);
+      document.getElementById('kpi-h0').textContent = state.h0.toFixed(3);
+
+      evaluatePassGatesAndHealth();
+    }
+
+    // Navigation Tabs with Gate Enforcement
+    const tabs = document.querySelectorAll('.nav-tab');
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        const targetId = tab.getAttribute('data-target');
+        tabs.forEach(t => {
+          t.classList.remove('active', 'text-white', 'bg-slate-800', 'border', 'border-slate-700');
+          t.classList.add('text-slate-400');
+        });
+        tab.classList.add('active', 'text-white', 'bg-slate-800', 'border', 'border-slate-700');
+        tab.classList.remove('text-slate-400');
+
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+        const targetEl = document.getElementById(targetId);
+        if (targetEl) targetEl.classList.remove('hidden');
+        state.activeTab = targetId;
+
+        if (targetId === 'tab-step4' && (!state.step1Passed || !state.step3Passed)) {
+          showToast('Gate Bloklangan!', "1-Bosqich (Optika ≤8%) yoki 3-Bosqich (Leak <0.20 kPa/soat) o'tmagani sababli 4-bosqich yopiq!", true);
+        }
+        if (targetId === 'tab-step5' && (!state.step1Passed || !state.step3Passed || !state.step4Passed)) {
+          showToast('Gate Bloklangan!', 'Avval 1-, 3- va 4-bosqichlarni PASS qiling!', true);
+        }
+
+        playBeep(450, 0.04);
+        if (targetId === 'tab-step3' && leakChart) leakChart.resize();
+        if (targetId === 'tab-step5' && chart30) chart30.resize();
+      });
+    });
+
+    const btnGoto3 = document.getElementById('btn-goto-step3-from-4');
+    if (btnGoto3) {
+      btnGoto3.addEventListener('click', () => {
+        const targetTab = !state.step1Passed ? '[data-target="tab-step1"]' : '[data-target="tab-step3"]';
+        const el = document.querySelector(targetTab);
+        if (el) el.click();
+      });
+    }
+
+    // Speed controls (Fix #3.2: Honest message + accelerates clock, M1, Leak-test & 30-day progress)
+    const speeds = [
+      { id: 'btn-speed-1x', val: 1 },
+      { id: 'btn-speed-10x', val: 10 },
+      { id: 'btn-speed-60x', val: 60 },
+      { id: 'btn-speed-300x', val: 300 }
+    ];
+    speeds.forEach(s => {
+      const el = document.getElementById(s.id);
+      if (el) {
+        el.addEventListener('click', () => {
+          state.timeSpeed = s.val;
+          speeds.forEach(other => {
+            const oEl = document.getElementById(other.id);
+            if (oEl) oEl.className = 'px-2 py-1 rounded hover:bg-slate-700 text-slate-300 transition';
+          });
+          el.className = 'px-2 py-1 rounded bg-cyan-600 text-white font-bold transition';
+          const demoNote = s.val >= 60 ? " (Demo rejim: 1800 sim-sekund = 1 kun)" : "";
+          logMessage(`Tezlik ${s.val}x: soat, kondensat (M1) to'planishi va aktiv grafiklar tezlashtirildi${demoNote}.`);
+          playBeep(650, 0.05);
+        });
+      }
+    });
+
+    // Run / Pause Toggle
+    const btnRunToggle = document.getElementById('btn-run-toggle');
+    const runText = document.getElementById('run-toggle-text');
+    if (btnRunToggle) {
+      btnRunToggle.addEventListener('click', () => {
+        if (state.eStopActive) {
+          showToast('E-STOP Faol!', 'Avval sariq TIKLASH (RESET) tugmasini bosing!', true);
+          return;
+        }
+        state.isRunning = !state.isRunning;
+        if (state.isRunning) {
+          btnRunToggle.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-lg shadow-emerald-600/20';
+          if (runText) runText.textContent = 'PAUZA';
+          logMessage('Simulyatsiya davom ettirilmoqda');
+        } else {
+          btnRunToggle.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition shadow-lg shadow-amber-600/20';
+          if (runText) runText.textContent = 'START';
+          logMessage("Simulyatsiya to'xtatildi (Pauza)", 'warn');
+        }
+        playBeep(520, 0.08);
+      });
+    }
+
+    // Sound toggle
+    const btnSound = document.getElementById('btn-sound-toggle');
+    const soundOn = document.getElementById('icon-sound-on');
+    const soundOff = document.getElementById('icon-sound-off');
+    if (btnSound) {
+      btnSound.addEventListener('click', () => {
+        state.soundEnabled = !state.soundEnabled;
+        if (soundOn && soundOff) {
+          soundOn.classList.toggle('hidden', !state.soundEnabled);
+          soundOff.classList.toggle('hidden', state.soundEnabled);
+        }
+        if (state.soundEnabled) playBeep(700, 0.08);
+      });
+    }
+
+    // Emergency Stop & E-Stop Reset
+    const btnEstop = document.getElementById('btn-estop');
+    const btnEstopReset = document.getElementById('btn-estop-reset');
+    if (btnEstop) {
+      btnEstop.addEventListener('click', () => {
+        state.isRunning = false;
+        state.eStopActive = true;
+        state.lampPower = 0;
+        if (btnEstopReset) btnEstopReset.classList.remove('hidden');
+        if (runText) runText.textContent = 'START';
+        document.getElementById('svg-light-beam').setAttribute('opacity', '0.05');
+        document.getElementById('svg-fan-blades').classList.remove('fan-spin');
+        renderAllTelemetry();
+        logMessage("AVARIYA TO'XTATISH (E-STOP) bosildi! IR lampa (0W) va nasoslar o'chirildi.", 'error');
+        showToast('E-STOP Faollashtirildi', "Tizim xavfsiz holatga o'tkazildi. Qayta yoqish uchun TIKLASH (RESET) tugmasini bosing.", true);
+        playBeep(250, 0.5, 'sawtooth');
+      });
+    }
+
+    if (btnEstopReset) {
+      btnEstopReset.addEventListener('click', () => {
+        state.eStopActive = false;
+        state.isRunning = true;
+        state.lampPower = 205;
+        btnEstopReset.classList.add('hidden');
+        btnRunToggle.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-lg shadow-emerald-600/20';
+        if (runText) runText.textContent = 'PAUZA';
+        document.getElementById('svg-light-beam').setAttribute('opacity', '1');
+        document.getElementById('svg-fan-blades').classList.add('fan-spin');
+        renderAllTelemetry();
+        logMessage('E-STOP tiklandi (RESET). IR lampa (205W) va vakuum tizimi normal ish rejimiga qaytdi.', 'success');
+        showToast('Tizim Tiklandi (RESET)', 'Barcha blokirovkalar yechildi, stend normal rejimda ishlamoqda.');
+      });
+    }
+
+    // 1-Bosqich: Lamp Height Adjuster & 9-Point Thermocouple Heatmap around 65.5°C (Fix #3.3)
+    const rngLampHeight = document.getElementById('rng-lamp-height');
+    const txtLampHeight = document.getElementById('txt-lamp-height');
+    const labelLampHeight = document.getElementById('label-lamp-height');
+    const badgeOptics = document.getElementById('badge-optics-check');
+
+    function updateOpticsUniformity() {
+      const h = parseInt(rngLampHeight ? rngLampHeight.value : 145);
+      state.lampHeight = h;
+      if (txtLampHeight) txtLampHeight.textContent = h + ' mm';
+      if (labelLampHeight) labelLampHeight.textContent = h + ' mm';
+
+      const deviation = Math.abs(h - 145);
+      const deltaPct = Number((4.8 + deviation * 0.15).toFixed(1));
+      state.t_delta_pct = deltaPct;
+
+      const kpiDelta = document.getElementById('kpi-deltat');
+      if (kpiDelta) {
+        if (state.t_delta_pct <= 8.0) {
+          kpiDelta.textContent = `Δ${state.t_delta_pct}% (≤8%)`;
+          kpiDelta.className = 'font-mono text-emerald-400 font-bold';
+          if (badgeOptics) {
+            badgeOptics.textContent = `Bajarildi: ${state.t_delta_pct}% (PASS)`;
+            badgeOptics.className = 'text-[10px] px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 font-bold';
+          }
+        } else {
+          kpiDelta.textContent = `Δ${state.t_delta_pct}% (>8% FAIL!)`;
+          kpiDelta.className = 'font-mono text-rose-400 font-bold animate-pulse';
+          if (badgeOptics) {
+            badgeOptics.textContent = `Talab buzildi: ${state.t_delta_pct}% (GATE FAIL)`;
+            badgeOptics.className = 'text-[10px] px-2 py-0.5 rounded bg-rose-950 text-rose-400 border border-rose-800 font-bold animate-pulse';
+          }
+        }
+      }
+
+      const baseT = 64.9;
+      for (let i = 1; i <= 9; i++) {
+        const el = document.getElementById(`grid-t${i}`);
+        if (el) {
+          const sign = (i % 2 === 0) ? 1 : -1;
+          const pointT = (baseT + (sign * (deviation * 0.08)) + (i * 0.14)).toFixed(1);
+          el.textContent = pointT + '°C';
+        }
+      }
+      evaluatePassGatesAndHealth();
+    }
+
+    if (rngLampHeight) {
+      rngLampHeight.addEventListener('input', updateOpticsUniformity);
+    }
+
+    // Step 1 Complete Button
+    const btnCompleteStep1 = document.getElementById('btn-complete-step1');
+    if (btnCompleteStep1) {
+      btnCompleteStep1.addEventListener('click', () => {
+        if (!state.step1Passed) {
+          showToast('1-Bosqich FAIL!', `Optik notekislik ΔT = ${state.t_delta_pct}% (>8%). Lampa balandligini ~145 mm ga sozlang!`, true);
+          return;
+        }
+        showToast('1-Bosqich Tasdiqlandi', "Mexanik yig'ish va optika tekshiruvi PASS bo'ldi!");
+        logMessage("1-Bosqich PASS: Stend mexanik yig'ish va optika (ΔT ≤ 8%) tasdiqlandi.", 'success');
+      });
+    }
+
+    // Step 2 Calibration buttons
+    const btnCalAll = document.getElementById('btn-run-all-calib');
+    if (btnCalAll) {
+      btnCalAll.addEventListener('click', () => {
+        showToast('Kalibrlash Bajarildi', 'Barcha 16 ta sensor kanallari 2-nuqtali kalibrlandi!');
+        logMessage('2-Bosqich: 16 ta nuqta (T1-T7, P1, P2, M1, M2, Q1, E1, TDS, pH, NH3) etalonlar bilan kalibrlandi.', 'success');
+      });
+    }
+    ['btn-cal-tc', 'btn-cal-pt100', 'btn-cal-press', 'btn-cal-scale'].forEach(id => {
+      const b = document.getElementById(id);
+      if (b) {
+        b.addEventListener('click', () => {
+          showToast('Kanal Kalibrlandi', `${id.replace('btn-cal-', '').toUpperCase()} datchiklari etalon bo'yicha tekshirildi.`);
+        });
+      }
+    });
+
+    // =========================================================================
+    // 5. STEP 3: LEAK TEST CHART WITH REAL-TIME ANIMATION & 'h' UNITS
+    // =========================================================================
+    let leakChart = null;
+    const leakCanvas = document.getElementById('chart-leak');
+    function generateLeakSeries(rate_kPah, maxHour = 24) {
+      return Array.from({ length: 25 }, (_, h) => (h <= maxHour ? Number((25.0 + rate_kPah * h).toFixed(2)) : null));
+    }
+
+    if (leakCanvas) {
+      const hours = Array.from({ length: 25 }, (_, i) => `${i}h`);
+      leakChart = new Chart(leakCanvas, {
+        type: 'line',
+        data: {
+          labels: hours,
+          datasets: [
+            {
+              label: 'Haqiqiy Bosim P(t) [kPa]',
+              data: generateLeakSeries(0.08, 24),
+              borderColor: '#38bdf8',
+              backgroundColor: 'rgba(56, 189, 248, 0.1)',
+              fill: true,
+              tension: 0.2,
+              pointRadius: 2
+            },
+            {
+              label: 'Maksimal Ruxsat Etilgan Chegara (0.20 kPa/soat → 29.8 kPa @ 24h)',
+              data: generateLeakSeries(0.20, 24),
+              borderColor: '#f59e0b',
+              borderDash: [5, 5],
+              pointRadius: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              title: { display: true, text: 'Kamera Bosimi P1 (kPa)', color: '#94a3b8' },
+              grid: { color: 'rgba(51, 65, 85, 0.3)' },
+              ticks: { color: '#94a3b8' }
+            },
+            x: {
+              title: { display: true, text: 'Sinov Vaqti (Soat - h)', color: '#94a3b8' },
+              grid: { color: 'rgba(51, 65, 85, 0.3)' },
+              ticks: { color: '#94a3b8' }
+            }
+          },
+          plugins: {
+            legend: { labels: { color: '#cbd5e1', font: { size: 11 } } }
+          }
+        }
+      });
+    }
+
+    const btnStartLeak = document.getElementById('btn-start-leak-test');
+    if (btnStartLeak) {
+      btnStartLeak.addEventListener('click', () => {
+        state.leakTestActive = true;
+        state.leakTestSimHours = 0;
+        if (leakChart) {
+          leakChart.data.datasets[0].data = generateLeakSeries(state.leakRate, 0);
+          leakChart.update();
+        }
+        showToast('24h Real-Time Leak-Test Boshlandi', 'Grafik soatbay (0h..24h) jonli chizilmoqda. Tezlashtirish uchun 60x/300x ni bosing!');
+        logMessage('3-Bosqich: 24 soatlik real-time germetiklik sinovi boshlandi (0h -> 24h).');
+      });
+    }
+
+    const btnFailLeak = document.getElementById('btn-simulate-leak-fail');
+    if (btnFailLeak) {
+      btnFailLeak.addEventListener('click', () => {
+        state.leakRate = 0.62;
+        state.leakTestSimHours = 24;
+        state.leakTestActive = false;
+        const disp = document.getElementById('leak-rate-display');
+        const badge = document.getElementById('leak-verdict-badge');
+        if (disp) {
+          disp.textContent = '0.62 kPa/soat';
+          disp.className = 'mt-2 text-3xl font-black font-mono text-rose-400';
+        }
+        if (badge) {
+          badge.textContent = 'FAIL: SIZIB CHIQISH (>0.5 kPa/soat) — 4-BOSQICH BLOKLANDI!';
+          badge.className = 'mt-2 px-3 py-1 rounded-full text-xs font-bold bg-rose-950 text-rose-400 border border-rose-800 animate-pulse';
+        }
+        if (leakChart) {
+          leakChart.data.datasets[0].data = generateLeakSeries(0.62, 24);
+          leakChart.data.datasets[0].borderColor = '#f43f5e';
+          leakChart.update();
+        }
+        evaluatePassGatesAndHealth();
+        showToast('PASS Gate Bloklandi!', "Leak-rate 0.62 kPa/soat (>0.20). 4- va 5-bosqichlarga o'tish bloklandi!", true);
+        logMessage('KRITIK XATO: Germetiklik sinovi FAIL (0.62 kPa/soat). Keyingi SOP bosqichlari bloklandi!', 'error');
+      });
+    }
+
+    const btnFixLeak = document.getElementById('btn-fix-leak');
+    if (btnFixLeak) {
+      btnFixLeak.addEventListener('click', () => {
+        state.leakRate = 0.07;
+        state.leakTestSimHours = 24;
+        state.leakTestActive = false;
+        const disp = document.getElementById('leak-rate-display');
+        const badge = document.getElementById('leak-verdict-badge');
+        if (disp) {
+          disp.textContent = '0.07 kPa/soat';
+          disp.className = 'mt-2 text-3xl font-black font-mono text-emerald-400';
+        }
+        if (badge) {
+          badge.textContent = 'PASS GATE OCHIQ (0.07 kPa/soat < 0.20)';
+          badge.className = 'mt-2 px-3 py-1 rounded-full text-xs font-bold bg-emerald-950 text-emerald-400 border border-emerald-800';
+        }
+        if (leakChart) {
+          leakChart.data.datasets[0].data = generateLeakSeries(0.07, 24);
+          leakChart.data.datasets[0].borderColor = '#38bdf8';
+          leakChart.update();
+        }
+        evaluatePassGatesAndHealth();
+        showToast('Flanetslar Zichlandi — Gate PASS', 'Sovunli suv bilan tekshirildi: ΔP/Δt = 0.07 kPa/soat. 4-Bosqich ochildi!');
+        logMessage('Flanetslar germetiklandi: ΔP/Δt = 0.07 kPa/soat. 4-bosqich PASS Gate ochildi.', 'success');
+      });
+    }
+
+    // =========================================================================
+    // 6. STEP 4: BASELINE (h0 = 0.061 kW/m²·K) & PASS GATE #2
+    // =========================================================================
+    const btnDry = document.getElementById('btn-run-dry-baseline');
+    if (btnDry) {
+      btnDry.addEventListener('click', () => {
+        showToast('Suvsiz Sinov Yakunlandi', "2 soatlik thermal baseline o'tkazildi. Parasitic yo'qotish 7.1%.");
+        logMessage("4-Bosqich: Suvsiz bo'sh stend sinovi muvaffaqiyatli o'tdi.", 'success');
+      });
+    }
+
+    const btnDistill = document.getElementById('btn-run-distill-baseline');
+    const badgeH0 = document.getElementById('badge-h0-measured');
+    if (btnDistill) {
+      btnDistill.addEventListener('click', () => {
+        state.h0 = 0.061;
+        state.step4Passed = true;
+        if (badgeH0) {
+          badgeH0.textContent = "O'lchangan (PASS: 0.061)";
+          badgeH0.className = 'text-xs font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800';
+        }
+        evaluatePassGatesAndHealth();
+        showToast('Etalon h₀ Tasdiqlandi (Gate PASS)', 'Distillangan suvda 6 soat sinov: h₀ = 0.061 kW/m²·K (61 W/m²·K). 5-Bosqich ochildi!');
+        logMessage('4-Bosqich PASS: Etalon h₀ = 0.061 kW/m²·K xotiraga yozildi. 5-Bosqichga ruxsat berildi.', 'success');
+      });
+    }
+
+    const btnResetH0 = document.getElementById('btn-reset-h0-gate');
+    if (btnResetH0) {
+      btnResetH0.addEventListener('click', () => {
+        state.step4Passed = false;
+        if (badgeH0) {
+          badgeH0.textContent = "O'lchanmagan (WAIT)";
+          badgeH0.className = 'text-xs font-mono px-2 py-0.5 rounded bg-rose-950 text-rose-400 border border-rose-800 animate-pulse';
+        }
+        evaluatePassGatesAndHealth();
+        showToast('4-Bosqich Gate Yopildi', "Etalon h₀ o'lchovi bekor qilindi. 5-Bosqich bloklandi!", true);
+        logMessage("4-Bosqich: h₀ etalon o'lchovi reset qilindi (5-bosqich bloklandi).", 'warn');
+      });
+    }
+
+    // =========================================================================
+    // 7. STEP 5: 30-DAY CHART (Scale 0.040–0.070 kW/m²·K, Fix #1 Variant B)
+    // =========================================================================
+    let chart30 = null;
+    const canvas30 = document.getElementById('chart-30days');
+
+    function rebuild30DayChart() {
+      if (!canvas30) return;
+      const days = Array.from({ length: 30 }, (_, i) => `${i + 1}-kun`);
+      const baseCurve = PhysicsEngine.compute30DayCurve(state.h0, state.phaseASevereScaling);
+
+      // If faultInjected (-999), introduce a visible NaN break at currentDay
+      const displayCurve = baseCurve.map((v, idx) => (state.faultInjected && idx + 1 === state.currentDay) ? null : v);
+
+      // Highlight active day point radius
+      const pointRadii = days.map((_, idx) => (idx + 1 === state.currentDay ? 7 : 3));
+
+      if (!chart30) {
+        chart30 = new Chart(canvas30, {
+          type: 'line',
+          data: {
+            labels: days,
+            datasets: [
+              {
+                label: "h_eff (Haqiqiy Bug'lanish Koeffitsiyenti, kW/m²·K)",
+                data: displayCurve,
+                borderColor: '#818cf8',
+                backgroundColor: 'rgba(129, 140, 248, 0.12)',
+                fill: true,
+                tension: 0.2,
+                spanGaps: false,
+                pointRadius: pointRadii,
+                pointHoverRadius: 7
+              },
+              {
+                label: `h₀ Etalon Baseline (${state.h0.toFixed(3)} kW/m²·K)`,
+                data: Array(30).fill(state.h0),
+                borderColor: '#38bdf8',
+                borderDash: [6, 4],
+                pointRadius: 0
+              },
+              {
+                label: `20% Kritik Chegara (${(state.h0 * CONFIG.CRITICAL_THRESHOLD).toFixed(4)} kW/m²·K — Sirtni tekshirish signali)`,
+                data: Array(30).fill(Number((state.h0 * CONFIG.CRITICAL_THRESHOLD).toFixed(4))),
+                borderColor: '#f43f5e',
+                borderDash: [4, 4],
+                pointRadius: 0
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                min: 0.040,
+                max: 0.070,
+                title: { display: true, text: 'h_eff (kW/m²·K)', color: '#94a3b8' },
+                grid: { color: 'rgba(51, 65, 85, 0.3)' },
+                ticks: {
+                  color: '#94a3b8',
+                  callback: (val) => val.toFixed(3)
+                }
+              },
+              x: {
+                grid: { color: 'rgba(51, 65, 85, 0.3)' },
+                ticks: { color: '#94a3b8' }
+              }
+            },
+            plugins: {
+              legend: { labels: { color: '#cbd5e1', font: { size: 11 } } }
+            }
+          }
+        });
+      } else {
+        chart30.data.datasets[0].data = displayCurve;
+        chart30.data.datasets[0].pointRadius = pointRadii;
+        chart30.data.datasets[0].borderColor = state.phaseASevereScaling ? '#f43f5e' : '#818cf8';
+        chart30.data.datasets[1].label = `h₀ Etalon Baseline (${state.h0.toFixed(3)} kW/m²·K)`;
+        chart30.data.datasets[1].data = Array(30).fill(state.h0);
+        const critVal = Number((state.h0 * CONFIG.CRITICAL_THRESHOLD).toFixed(4));
+        chart30.data.datasets[2].label = `20% Kritik Chegara (${critVal.toFixed(4)} kW/m²·K — Sirtni tekshirish signali)`;
+        chart30.data.datasets[2].data = Array(30).fill(critVal);
+        chart30.update('none');
+      }
+    }
+
+    const rngTestDay = document.getElementById('rng-test-day');
+    const badgeCurrentDay = document.getElementById('badge-current-day');
+    const sliderDayLabel = document.getElementById('slider-day-label');
+
+    function updateDayPhase(day) {
+      if (state.phaseASevereScaling && day > 7) {
+        day = 7;
+        if (rngTestDay) rngTestDay.value = 7;
+        showToast('Faza B Bloklangan!', '7-kunda h_eff >20% ga tushdi (0.0471 < 0.0488). Avval sirtni tekshirib tozalang!', true);
+      }
+
+      state.currentDay = day;
+      if (rngTestDay) rngTestDay.value = day;
+      if (badgeCurrentDay) badgeCurrentDay.textContent = `${day}-kun / 30 kun`;
+      
+      let phaseName = 'Faza A';
+      if (day >= 1 && day <= 7) phaseName = 'Faza A (Tabiiy Scaling)';
+      else if (day >= 8 && day <= 14) phaseName = "Faza B (Ko'ndalang Back-Flush)";
+      else if (day >= 15 && day <= 21) phaseName = 'Faza C (0.4 ppm Gipoxlorit)';
+      else phaseName = 'Faza D (24/7 Barqaror Rejim)';
+
+      if (sliderDayLabel) sliderDayLabel.textContent = `${day}-kun (${phaseName})`;
+
+      ['a', 'b', 'c', 'd'].forEach(p => {
+        const el = document.getElementById(`phase-pill-${p}`);
+        if (el) el.className = 'p-1.5 rounded bg-slate-800 text-slate-400 border border-slate-700';
+      });
+
+      let activePillId = 'phase-pill-a';
+      if (day >= 8 && day <= 14) activePillId = 'phase-pill-b';
+      else if (day >= 15 && day <= 21) activePillId = 'phase-pill-c';
+      else if (day >= 22) activePillId = 'phase-pill-d';
+
+      const activeEl = document.getElementById(activePillId);
+      if (activeEl) activeEl.className = 'p-1.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-700';
+
+      const curve = PhysicsEngine.compute30DayCurve(state.h0, state.phaseASevereScaling);
+      const targetH = curve[day - 1] || 0.0591;
+      // Set J_flux so that q_evap / ΔT matches targetH from first principles
+      const dT = 20.3;
+      const lambda = PhysicsEngine.LAMBDA_655; // 2346.2 kJ/kg
+      const q_target = targetH * 1000 * dT; // W/m²
+      state.j_flux = Number(((q_target * 3600) / (lambda * 1000)).toFixed(2));
+      state.hHistory = [targetH, targetH, targetH, targetH, targetH];
+      state.mass_rate_kgh = Number((state.j_flux * 0.5).toFixed(2));
+      state.mass_rate_kgs = state.mass_rate_kgh / 3600;
+
+      rebuild30DayChart();
+      renderAllTelemetry();
+    }
+
+    if (rngTestDay) {
+      rngTestDay.addEventListener('input', (e) => {
+        updateDayPhase(parseInt(e.target.value));
+      });
+    }
+
+    // Severe Scaling Simulation in Phase A
+    const btnSevereScale = document.getElementById('btn-sim-severe-scaling');
+    const btnInspectClean = document.getElementById('btn-inspect-clean-surface');
+    const lblPhaseADrop = document.getElementById('label-phaseA-drop');
+
+    if (btnSevereScale) {
+      btnSevereScale.addEventListener('click', () => {
+        state.phaseASevereScaling = true;
+        if (btnInspectClean) btnInspectClean.classList.remove('hidden');
+        if (lblPhaseADrop) {
+          lblPhaseADrop.textContent = '-22.8% (>20% BLOCKED!)';
+          lblPhaseADrop.className = 'text-rose-400 font-bold animate-pulse';
+        }
+        updateDayPhase(7);
+        logMessage("DIQQAT (7-kun): h_eff = 0.0471 kW/m²K (-22.8% > 20%). Faza B ga o'tish bloklandi! Sirtni tekshiring.", 'error');
+        showToast('Scaling >20% Chegaradan Oshdi!', "Faza B bloklandi. Davom etish uchun «Sirtni Ko'zdan Kechirish va Tozalash» tugmasini bosing.", true);
+      });
+    }
+
+    if (btnInspectClean) {
+      btnInspectClean.addEventListener('click', () => {
+        state.phaseASevereScaling = false;
+        btnInspectClean.classList.add('hidden');
+        if (lblPhaseADrop) {
+          lblPhaseADrop.textContent = '-16.4% (≤20% OK)';
+          lblPhaseADrop.className = 'text-emerald-400 font-bold';
+        }
+        updateDayPhase(8);
+        logMessage("Absorber sirti ko'zdan kechirildi va lokal tuz kristallari tozalandi. Faza B (Back-flush) ga ruxsat berildi!", 'success');
+        showToast('Sirt Tozalandi — Faza B Ochildi', 'h_eff normaga qaytdi. 8–30 kunlik sinov davom etmoqda.');
+      });
+    }
+
+    // Quick Action Buttons
+    const btnFlush = document.getElementById('btn-trigger-flush');
+    if (btnFlush) {
+      btnFlush.addEventListener('click', () => {
+        state.j_flux = Math.min(1.90, Number((state.j_flux + 0.03).toFixed(2)));
+        state.mass_rate_kgh = Number((state.j_flux * 0.5).toFixed(2));
+        state.mass_rate_kgs = state.mass_rate_kgh / 3600;
+        renderAllTelemetry();
+        showToast('Back-Flush Yoqildi', "5 daqiqali ko'ndalang oqim sikli bajarildi. h_eff tiklandi.");
+        logMessage("Operator buyrug'i: 5 daqiqali ko'ndalang back-flush sikli faollashdi (sarf: 3.8%).", 'success');
+      });
+    }
+
+    const btnNaocl = document.getElementById('btn-trigger-naocl');
+    if (btnNaocl) {
+      btnNaocl.addEventListener('click', () => {
+        showToast('Gipoxlorit Yuborildi', '0.4 ppm NaOCl dozalandi. Bio-plyonka zararsizlantirildi.');
+        logMessage('Kimyoviy tozalash: 10 daqiqa davomida 0.4 ppm gipoxlorit sikli bajarildi.', 'success');
+      });
+    }
+
+    const btnRefCell = document.getElementById('btn-clean-refcell');
+    if (btnRefCell) {
+      btnRefCell.addEventListener('click', () => {
+        state.q1_flux = 1000;
+        document.getElementById('kpi-q1').textContent = '1000 W/m²';
+        showToast('Q1 Tozalandi', 'Reference cell chang va tuz qatlamidan tozalandi. Oqim: 1000 W/m².');
+        logMessage("Q1 Reference Cell peshindagi rejali tozalashdan o'tkazildi.", 'info');
+      });
+    }
+
+    // =========================================================================
+    // 8. FAULT INJECTION (-999) WITH FULL CASCADE PROPAGATION
+    // =========================================================================
+    const btnFault = document.getElementById('btn-inject-fault');
+    if (btnFault) {
+      btnFault.addEventListener('click', () => {
+        state.faultInjected = !state.faultInjected;
+        rebuild30DayChart();
+        renderAllTelemetry();
+        populateCSVPreview();
+
+        if (state.faultInjected) {
+          btnFault.textContent = '🔧 T1 Datchikni Ulash (-999 Tiklash)';
+          btnFault.className = 'text-[11px] px-2.5 py-1 rounded bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-700 font-bold transition animate-pulse';
+          showToast('Kaskadli Xato: -999 → DATA INVALID', 'T1 uzildi! T_surf_avg = -999, h_eff = -999, Tizim = WARNING, Grafik uzildi.', true);
+          logMessage("XATOLIK (-999 KASKAD): T1 datchigi uzildi -> T_surf_avg = NaN (-999) -> h_eff = NaN (-999) -> System State: WARNING!", 'error');
+        } else {
+          btnFault.textContent = '⚠️ T1 Datchik Uzilishi (-999)';
+          btnFault.className = 'text-[11px] px-2.5 py-1 rounded bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800 font-bold transition';
+          showToast('T1 Datchik Tiklandi', "Barcha hosilaviy ko'rsatkichlar (T_surf, h_eff) va grafik tiklandi.");
+          logMessage('T1 termojuft signali tiklandi. T_surf_avg va h_eff hisoblash zanjiri normaga qaytdi.', 'success');
+        }
+      });
+    }
+
+    // Clear logs
+    const btnClearLog = document.getElementById('btn-clear-log');
+    if (btnClearLog) {
+      btnClearLog.addEventListener('click', () => {
+        const box = document.getElementById('operator-log-box');
+        if (box) box.innerHTML = '<div class="text-slate-500">[Jurnal tozalandi]</div>';
+      });
+    }
+
+    // =========================================================================
+    // 9. HONEST 43,200-ROW CSV GENERATOR (~6.0 MB) WITH MANDATORY DISCLAIMER
+    // =========================================================================
+    function formatSimClock(totalSec) {
+      const h = Math.floor((totalSec % 86400) / 3600);
+      const m = Math.floor((totalSec % 3600) / 60);
+      const s = Math.floor(totalSec % 60);
+      const pad = (n) => (n < 10 ? '0' + n : '' + n);
+      return `${pad(h)}:${pad(m)}:${pad(s)}`;
+    }
+
+    function pushStreamRow() {
+      const timeStr = formatSimClock(state.elapsedSeconds);
+      const isErr = state.faultInjected;
+      const row = {
+        time: timeStr,
+        p: state.p1.toFixed(1),
+        t_surf: isErr ? '-999' : state.t_surf.toFixed(1),
+        t_bulk: state.t_bulk.toFixed(1),
+        h_eff: isErr ? '-999' : state.h_real.toFixed(3),
+        m: state.m1_accumulated.toFixed(3),
+        tds: state.tds.toFixed(1),
+        stat: isErr ? 'DATA INVALID (-999)' : 'VALID'
+      };
+      state.recentRows.push(row);
+      if (state.recentRows.length > 6) state.recentRows.shift();
+    }
+
+    function populateCSVPreview() {
+      const tbody = document.getElementById('csv-preview-tbody');
+      if (!tbody) return;
+      if (state.recentRows.length === 0) {
+        for (let i = 0; i < 6; i++) {
+          state.elapsedSeconds += 2;
+          pushStreamRow();
+        }
+      }
+      tbody.innerHTML = '';
+      state.recentRows.forEach(r => {
+        const tr = document.createElement('tr');
+        const isErr = r.stat.includes('-999');
+        tr.className = isErr ? 'bg-rose-950/40 text-rose-300' : 'hover:bg-slate-900/40';
+        tr.innerHTML = `
+          <td class="py-1.5 px-2.5 font-bold">${r.time}</td>
+          <td class="py-1.5 px-2.5">${r.p}</td>
+          <td class="py-1.5 px-2.5 ${isErr ? 'font-black text-rose-400' : ''}">${r.t_surf}</td>
+          <td class="py-1.5 px-2.5">${r.t_bulk}</td>
+          <td class="py-1.5 px-2.5 ${isErr ? 'font-black text-rose-400' : 'text-indigo-400 font-bold'}">${r.h_eff}</td>
+          <td class="py-1.5 px-2.5">${r.m}</td>
+          <td class="py-1.5 px-2.5 text-emerald-400">${r.tds}</td>
+          <td class="py-1.5 px-2.5"><span class="px-1.5 py-0.5 rounded text-[10px] ${isErr ? 'bg-rose-900 text-rose-200 font-bold' : 'bg-emerald-950 text-emerald-400 border border-emerald-800'}">${r.stat}</span></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function exportCSVFile(rowCount) {
+      const progBox = document.getElementById('csv-progress-container');
+      const progBar = document.getElementById('csv-progress-bar');
+      const progPct = document.getElementById('csv-progress-pct');
+      const progTxt = document.getElementById('csv-progress-text');
+
+      if (progBox && progBar && progPct && progTxt) {
+        progBox.classList.remove('hidden');
+        progBar.style.width = '0%';
+        progPct.textContent = '0%';
+        progTxt.textContent = `CSV generatsiya qilinmoqda (0 / ${rowCount.toLocaleString()} qator)...`;
+      }
+
+      const chunks = [];
+      const headerLines = [
+        "# DISCLAIMER: O'quv vositasi. Fizik model va SOP/scaling raqamlari illyustrativ (illustrative). Muhandislik qarorlari uchun ishlatilmaydi. Test Stand real o'lchovlari bilan validatsiya qilinmagan.",
+        "# SOLARDES TEST STAND — SCADA TRAINING SIMULATOR v1.0 (APACHE 2.0 PUBLIC RELEASE — ILLUSTRATIVE PARAMETERS)",
+        `# SESSION METADATA: Sana: 2026-11-06, Vaqt: 17:35:00, Tashqi T: 24.2C, Namlik: 42%, Operator: Muhandis Jamoasi, Qatorlar soni: ${rowCount}`,
+        `# THERMODYNAMIC SPECS: Chamber: 60L (P1=25.0 kPa, T_sat=65.0C), Surface: T_surf=65.5C (P_sat=25.6 kPa > P1), T_bulk=45.2C (dT=20.3K), lambda: ${PhysicsEngine.LAMBDA_655} kJ/kg, Etalon h0: 0.061 kW/m2K, h_eff: 0.059 kW/m2K, Mass Rate: 0.92 kg/h`,
+        "Row_ID,Timestamp,Elapsed_s,P1_kPa,P2_kPa,T1_C,T2_C,T3_C,T_surf_avg_C,T4_bulk_C,T5_vap_C,T6_cond_in_C,T7_cond_out_C,Q1_Wm2,E1_W,h_eff_kWm2K,M1_kg,M2_g,TDS_mgL,pH,NH3_mgL,Status\n"
+      ];
+      chunks.push(headerLines.join("\n"));
+
+      let m1_sim = 1.420;
+      const dm_2sec = state.mass_rate_kgs * 2;
+      const batchSize = 4320; // 10% per non-blocking frame
+      let currentRow = 0;
+
+      function processBatch() {
+        const batchLines = [];
+        const endRow = Math.min(rowCount, currentRow + batchSize);
+        for (let i = currentRow; i < endRow; i++) {
+          const sec = i * 2;
+          const clock = formatSimClock(sec);
+          const wave = Math.sin(i * 0.05) * 0.12;
+          const isFaultRow = state.faultInjected && (i >= 10 && i <= 25);
+
+          const t1 = isFaultRow ? -999 : (66.1 + wave).toFixed(2);
+          const t2 = (64.8 + wave * 0.8).toFixed(2);
+          const t3 = (65.6 - wave * 0.5).toFixed(2);
+          const t_surf_avg = isFaultRow ? -999 : (65.5 + wave * 0.4).toFixed(2);
+          const t4_bulk = (45.2 + wave * 0.2).toFixed(2);
+          const h_eff = isFaultRow ? -999 : state.h_real.toFixed(4);
+          const status = isFaultRow ? "ERR_-999_INVALID" : "OK";
+
+          if (!isFaultRow) m1_sim += dm_2sec;
+
+          batchLines.push(
+            `${i + 1},2026-11-06 ${clock},${sec},25.00,25.30,${t1},${t2},${t3},${t_surf_avg},${t4_bulk},65.10,58.40,26.40,985.0,205.0,${h_eff},${m1_sim.toFixed(4)},12.450,14.80,7.18,0.24,${status}`
+          );
+        }
+        chunks.push(batchLines.join("\n") + "\n");
+        currentRow = endRow;
+
+        const pct = Math.round((currentRow / rowCount) * 100);
+        if (progBar && progPct && progTxt) {
+          progBar.style.width = `${pct}%`;
+          progPct.textContent = `${pct}%`;
+          progTxt.textContent = `CSV generatsiya qilinmoqda (${currentRow.toLocaleString()} / ${rowCount.toLocaleString()} qator)...`;
+        }
+
+        if (currentRow < rowCount) {
+          setTimeout(processBatch, 15);
+        } else {
+          const blob = new Blob(chunks, { type: 'text/csv;charset=utf-8;' });
+          const sizeMB = (blob.size / (1024 * 1024)).toFixed(2);
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.setAttribute("href", url);
+          link.setAttribute("download", `TestStand_v1.0_DAY${state.currentDay}_${rowCount}_ROWS.csv`);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+
+          if (progTxt) progTxt.textContent = `Tayyor! ${rowCount.toLocaleString()} qator (${sizeMB} MB) yuklab olindi.`;
+          setTimeout(() => {
+            if (progBox) progBox.classList.add('hidden');
+          }, 2500);
+
+          showToast('CSV Muvaffaqiyatli Yuklandi!', `Haqiqiy ${rowCount.toLocaleString()} qatorli (${sizeMB} MB) audit fayli eksport qilindi.`);
+          logMessage(`CSV Eksport bajarildi: ${rowCount.toLocaleString()} ta qator (${sizeMB} MB) yozildi.`, 'success');
+        }
+      }
+
+      processBatch();
+    }
+
+    const btnExportFull = document.getElementById('btn-export-csv');
+    if (btnExportFull) {
+      btnExportFull.addEventListener('click', () => exportCSVFile(43200));
+    }
+    const btnExportDemo = document.getElementById('btn-export-csv-demo');
+    if (btnExportDemo) {
+      btnExportDemo.addEventListener('click', () => exportCSVFile(50));
+    }
+
+    // =========================================================================
+    // 10. MAIN SIMULATION LOOP (Real-Time Chart & Day Advancement on High Speed)
+    // =========================================================================
+    setInterval(() => {
+      if (!state.isRunning || state.eStopActive) return;
+
+      const prevSec = state.elapsedSeconds;
+      state.elapsedSeconds += state.timeSpeed;
+
+      // Advance Day in 60x/300x demo mode (1800 sim-seconds = 1 day for fast demo training)
+      if (state.timeSpeed >= 60 && Math.floor(state.elapsedSeconds / 1800) > Math.floor(prevSec / 1800)) {
+        if (!state.phaseASevereScaling || state.currentDay < 7) {
+          const nextDay = (state.currentDay % 30) + 1;
+          updateDayPhase(nextDay);
+          logMessage(`Demo Tezlashtirish (${state.timeSpeed}x): 1800 sim-sekund o'tdi -> ${nextDay}-kunga o'tildi.`);
+        }
+      }
+
+      // Update live simulation clock header
+      const simClock = document.getElementById('meta-sim-clock');
+      if (simClock) {
+        simClock.textContent = `Kun ${state.currentDay} | ${formatSimClock(state.elapsedSeconds)}`;
+      }
+
+      // Dynamic physical micro-fluctuations around T_surf = 65.5°C (> T_sat = 65.0°C)
+      const phaseAngle = state.elapsedSeconds * 0.02;
+      const noise = Math.sin(phaseAngle) * 0.08 + (Math.random() - 0.5) * 0.04;
+
+      state.t1 = 66.1 + noise;
+      state.t2 = 64.8 - noise * 0.5;
+      state.t3 = 65.6 + noise * 0.5;
+      state.t_surf = Number(((state.t1 + state.t2 + state.t3) / 3).toFixed(2));
+      state.t_bulk = Number((45.2 + Math.cos(phaseAngle * 0.5) * 0.05).toFixed(2));
+
+      // Accumulate distillate M1 accurately: 0.92 kg/h = 0.00025556 kg/s
+      if (!state.faultInjected) {
+        state.m1_accumulated += state.mass_rate_kgs * state.timeSpeed;
+      }
+
+      // Real-time Leak Test progression if active (Fix #3.2)
+      if (state.leakTestActive) {
+        const stepHours = Math.max(0.25, state.timeSpeed / 60);
+        state.leakTestSimHours = Math.min(24, state.leakTestSimHours + stepHours);
+        const curH = Math.floor(state.leakTestSimHours);
+        state.leakPressure = Number((25.0 + state.leakRate * curH).toFixed(2));
+
+        const progLbl = document.getElementById('leak-progress-label');
+        if (progLbl) {
+          progLbl.textContent = `P_cur: ${state.leakPressure.toFixed(2)} kPa | Holat: ${curH}h / 24h`;
+        }
+        if (leakChart) {
+          leakChart.data.datasets[0].data = generateLeakSeries(state.leakRate, curH);
+          leakChart.update('none');
+        }
+        if (curH >= 24) {
+          state.leakTestActive = false;
+          showToast('24h Leak-Test Yakunlandi', `Yakuniy bosim: ${state.leakPressure.toFixed(2)} kPa (ΔP/Δt = ${state.leakRate} kPa/soat).`);
+        }
+      }
+
+      pushStreamRow();
+      populateCSVPreview();
+      renderAllTelemetry();
+    }, 1000);
+
+    // Initial Boot — Set live current date in Session Metadata
+    (function initSessionMetadataDate() {
+      const metaEl = document.getElementById('meta-session-text');
+      if (metaEl) {
+        const today = new Date().toISOString().slice(0, 10);
+        metaEl.textContent = `Demo Session (${today}) | T_amb: 24.2°C | RH: 42% | Op: Muhandis Jamoasi`;
+      }
+    })();
+    updateOpticsUniformity();
+    rebuild30DayChart();
+    updateDayPhase(14);
+    populateCSVPreview();
+    renderAllTelemetry();
+  </script>
+</body>
+</html>
