@@ -74,7 +74,7 @@ Bug reports on thermodynamic formulas, UI responsiveness, or accessibility are w
 
 - **Email:** baxriddinjorayev006@gmail.com
 - **GitHub Issues:** (https://github.com/khuja006/SolarDes-BT01-Simulator/issues) for technical questions
-- **LinkedIn:** (https://linkedin.com/in/your-profile)
+- **LinkedIn:** https://www.linkedin.com/in/baxriddinxo-ja-jorayev
 
 ---
 
@@ -82,7 +82,7 @@ Bug reports on thermodynamic formulas, UI responsiveness, or accessibility are w
 
 - **Email:** baxriddinjorayev006@gmail.com
 - **GitHub Issues:** https://github.com/khuja006/SolarDes-BT01-Simulator/issues для технических вопросов
-- **LinkedIn:** https://linkedin.com/in/your-profile
+- **LinkedIn:** https://www.linkedin.com/in/baxriddinxo-ja-jorayev
 
 ---
 
@@ -90,7 +90,7 @@ Bug reports on thermodynamic formulas, UI responsiveness, or accessibility are w
 
 - **Email:** baxriddinjorayev006@gmail.com
 - **GitHub Issues:** Texnik savollar uchun https://github.com/khuja006/SolarDes-BT01-Simulator/issues
-- **LinkedIn:** https://linkedin.com/in/your-profile
+- **LinkedIn:** https://www.linkedin.com/in/baxriddinxo-ja-jorayev
 
 ---
 
